@@ -92,17 +92,48 @@ h2 { color: #ffd54f; }
 .card {
   flex: 1; max-width: 84px; aspect-ratio: 3/4; border-radius: 10px; position: relative;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  border: 3px solid #2c3e50; cursor: pointer; color: #fff;
+  border: 3px solid #2c3e50; cursor: grab; color: #fff;
   font-size: 0.7em; font-weight: bold; text-align: center; padding: 2px;
+  touch-action: none;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
 }
-.card .icon { font-size: 1.8em; }
+.card .icon { font-size: 1.8em; transition: transform 0.15s ease; }
 .card .cost {
   position: absolute; top: -8px; left: -8px; background: #d500f9; color: #fff;
   border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;
   font-size: 0.9em; border: 2px solid #fff;
 }
-.card.selected { border-color: #ffd54f; transform: translateY(-6px); box-shadow: 0 0 12px #ffd54f; }
+
+/* animação ao passar o mouse/dedo por cima */
+.card:hover:not(.disabled):not(.dragging) {
+  transform: translateY(-8px) scale(1.06);
+  box-shadow: 0 8px 16px rgba(0,0,0,0.4), 0 0 0 2px #ffd54f;
+  border-color: #ffd54f;
+  z-index: 2;
+}
+.card:hover:not(.disabled):not(.dragging) .icon { transform: scale(1.15); }
+
+.card.selected { border-color: #ffd54f; box-shadow: 0 0 12px #ffd54f; }
+.card.dragging { opacity: 0.35; cursor: grabbing; }
 .card.disabled { filter: grayscale(0.8) brightness(0.5); cursor: not-allowed; }
+
+/* carta "fantasma" que segue o dedo/mouse durante o arraste */
+.drag-ghost {
+  position: fixed;
+  width: 78px; height: 100px;
+  border-radius: 10px;
+  border: 3px solid #ffd54f;
+  display: flex; align-items: center; justify-content: center;
+  transform: translate(-50%, -60%) scale(1.1);
+  pointer-events: none;
+  z-index: 999;
+  opacity: 0.95;
+  box-shadow: 0 10px 24px rgba(0,0,0,0.5);
+}
+.drag-ghost .icon { font-size: 2.4em; }
+.drag-ghost.over-field {
+  box-shadow: 0 0 0 4px #4caf50, 0 10px 24px rgba(0,0,0,0.5);
+}
 
 #screen-end #end-title { font-size: 2.4em; }
 #end-subtitle { color: #9db3d6; margin-bottom: 24px; font-size: 1.1em; }
