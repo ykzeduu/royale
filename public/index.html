@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Mini Clash Royale</title>
+    <style>
+        body { background: #222; text-align: center; color: white; font-family: sans-serif; }
+        canvas { background: #4aab4a; border: 4px solid #fff; display: block; margin: 10px auto; }
+    </style>
+</head>
+<body>
+    <h2>Mini Clash Online</h2>
+    <h3 id="role">Aguardando jogador...</h3>
+    <h3 id="elixir">Elixir: 0</h3>
+    <canvas id="gameCanvas" width="400" height="600"></canvas>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        // Substitua a linha antiga por esta:
+        const socket = io(window.location.origin);
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let myRole = null; // 'p1' ou 'p2'
+        let currentElixir = 0;
+
+        socket.on('player_assignment', (num) => {
+            myRole = 'p' + num;
+            document.getElementById('role').innerText = `Você é o Jogador ${num}`;
+        });
+
+        // Escuta as atualizações do servidor e desenha na tela
+        socket.on('game_update', (state) => {
+            if (myRole) {
+                currentElixir = Math.floor(state.elixir[myRole]);
+                document.getElementById('elixir').innerText = `Elixir: ${currentElixir} (Custo da Tropa: 3)`;
+            }
+
+            // Limpa o canvas para o próximo frame
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Desenha as "Torres" fixas para referência estética
+            ctx.fillStyle = 'blue';
+            ctx.fillRect(175, 550, 50, 50); // Torre P1 (baixo)
+            ctx.fillStyle = 'red';
+            ctx.fillRect(175, 0, 50, 50);   // Torre P2 (cima)
+
+            // Desenha as tropas enviadas pelo servidor
+            state.troops.forEach(troop => {
+                ctx.fillStyle = troop.owner === 'p1' ? 'cyan' : 'orange';
+                ctx.beginPath();
+                ctx.arc(troop.x, troop.y, 15, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        });
+
+        // Clique no mapa para spawnar uma tropa
+        canvas.addEventListener('click', (e) => {
+            if (!myRole) return;
+            
+            // Pega a posição do clique relativa ao canvas
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            // Envia o comando de spawn para o servidor
+            socket.emit('spawn_troop', { x, y });
+        });
+    </script>
+</body>
+</html>
