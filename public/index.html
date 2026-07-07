@@ -2,67 +2,75 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Clash Royale Royale Ultimate</title>
+    <title>Clash Royale Ultimate Mobile</title>
     <style>
-        body { background: #141414; text-align: center; color: white; font-family: 'Arial', sans-serif; margin: 0; padding: 10px; }
+        body { background: #111; text-align: center; color: white; font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 10px; }
         .screen { display: none; }
         .active { display: block; }
-        input, button { padding: 12px; margin: 8px; font-size: 16px; border-radius: 8px; border: none; }
-        input { background: #2c3e50; color: white; text-align: center; width: 240px; }
-        button { background: #2ecc71; color: white; font-weight: bold; cursor: pointer; }
+        input, button { padding: 12px; margin: 8px; font-size: 16px; border-radius: 8px; border: none; outline: none; }
+        input { background: #2c3e50; color: white; text-align: center; width: 240px; border: 2px solid #34495e; }
+        button { background: #2ecc71; color: white; font-weight: bold; cursor: pointer; box-shadow: 0 4px #27ae60; }
         button:hover { background: #27ae60; }
-        .danger { background: #e74c3c; }
+        button:active { transform: translateY(2px); box-shadow: 0 2px #219653; }
+        .danger { background: #e74c3c; box-shadow: 0 4px #c0392b; }
         .danger:hover { background: #c0392b; }
-        canvas { background: #55b655; border: 5px solid #2c3e50; border-radius: 12px; display: block; margin: 0 auto; box-shadow: 0 10px 20px rgba(0,0,0,0.6); }
-        #lobbyList { max-width: 420px; margin: 15px auto; background: #222; border-radius: 8px; padding: 5px; }
-        .lobby-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #333; }
-        #elixirBarContainer { width: 400px; height: 16px; background: #333; margin: 8px auto; border-radius: 8px; border: 2px solid #fff; overflow: hidden; }
-        #elixirBar { width: 0%; height: 100%; background: #e000bc; }
-        .deck { display: flex; justify-content: center; gap: 12px; margin-top: 5px; }
-        .card { background: #2c3e50; padding: 10px; border-radius: 8px; border: 3px solid #95a5a6; cursor: pointer; min-width: 80px; }
-        .card.selected { border-color: #f1c40f; background: #34495e; box-shadow: 0 0 10px #f1c40f; }
+        
+        canvas { background: #45a247; border: 6px solid #2c3e50; border-radius: 16px; display: block; margin: 0 auto; box-shadow: 0 12px 28px rgba(0,0,0,0.7); }
+        #lobbyList { max-width: 420px; margin: 15px auto; background: #1a1a1a; border-radius: 8px; padding: 5px; border: 1px solid #333; }
+        .lobby-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #222; }
+        #elixirBarContainer { width: 390px; height: 16px; background: #333; margin: 10px auto; border-radius: 10px; border: 2px solid #fff; overflow: hidden; box-shadow: inset 0 2px 5px rgba(0,0,0,0.5); }
+        #elixirBar { width: 0%; height: 100%; background: linear-gradient(90deg, #d904b5, #ff6ee6); }
+        
+        .deck { display: flex; justify-content: center; gap: 10px; margin-top: 8px; }
+        .card { background: linear-gradient(135deg, #34495e, #2c3e50); padding: 10px; border-radius: 10px; border: 3px solid #7f8c8d; cursor: pointer; min-width: 85px; font-weight: bold; font-size: 13px; text-shadow: 1px 1px 2px black; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .card.selected { border-color: #f1c40f; box-shadow: 0 0 12px #f1c40f; transform: translateY(-4px); }
     </style>
 </head>
 <body>
 
     <div id="menuScreen" class="screen active">
-        <h2>⚔️ Clash Royale Web Arena ⚔️</h2>
-        <input type="text" id="usernameInput" placeholder="Seu Nickname"><br>
-        <button onclick="createLobby()">Criar Sala</button>
+        <h2>⚔️ Clash Royale Mini Arena ⚔️</h2>
+        <input type="text" id="usernameInput" placeholder="Seu Nome de Invocador"><br>
+        <button onclick="createLobby()">Criar Arena Privada</button>
         <button onclick="joinRandom()">Partida Rápida</button>
         <br><br>
-        <input type="text" id="lobbyIdInput" placeholder="Inserir Código ID">
-        <button onclick="joinLobbyById()">Entrar pelo ID</button>
-        <h3>Salas Prontas para Jogar</h3>
-        <div id="lobbyList">Nenhuma sala criada. Crie uma acima!</div>
+        <input type="text" id="lobbyIdInput" placeholder="Código ID da Sala">
+        <button onclick="joinLobbyById()">Buscar Arena</button>
+        <h3>Arenas Prontas para Combate</h3>
+        <div id="lobbyList">Nenhum jogador aguardando...</div>
     </div>
 
     <div id="gameScreen" class="screen">
         <div id="lobbyWaitingInfo">
             <h2 id="lobbyTitle">Lobby ID: -----</h2>
-            <h3 style="color: #f1c40f;">Esperando seu amigo entrar... Copie o ID acima!</h3>
+            <h3 style="color: #f1c40f; animation: pulse 1.5s infinite;">Aguardando oponente... Envie o código para o seu amigo!</h3>
         </div>
 
         <div id="gamePlayArea" style="display: none;">
-            <h3 id="playerInfo" style="margin: 5px;">Batalha</h3>
+            <h3 id="playerInfo" style="margin: 4px; font-size: 18px; letter-spacing: 1px;">Carregando Arena...</h3>
             <canvas id="gameCanvas" width="400" height="600"></canvas>
+            
             <div id="elixirBarContainer"><div id="elixirBar"></div></div>
-            <h4 id="elixirText" style="margin:2px; color:#ff7bf3;">Elixir: 0/10</h4>
+            <h4 id="elixirText" style="margin:2px; color:#ff85ec; font-size:16px;">Elixir: 0/10</h4>
             
             <div class="deck">
-                <div class="card selected" id="card-gigante" onclick="selectCard('gigante')"><strong>GIGANTE</strong><br>5 💧</div>
-                <div class="card" id="card-arqueiro" onclick="selectCard('arqueiro')"><strong>ARQUEIRO</strong><br>3 💧</div>
-                <div class="card" id="card-goblin" onclick="selectCard('goblin')"><strong>GOBLIN</strong><br>2 💧</div>
+                <div class="card selected" id="card-gigante" onclick="selectCard('gigante')">GIGANTE<br><span style="color:#ff5ee7">5 💧</span></div>
+                <div class="card" id="card-arqueiro" onclick="selectCard('arqueiro')">ARQUEIRO<br><span style="color:#ff5ee7">3 💧</span></div>
+                <div class="card" id="card-goblin" onclick="selectCard('goblin')">GOBLIN<br><span style="color:#ff5ee7">2 💧</span></div>
             </div>
         </div>
         <br>
-        <button class="danger" onclick="leaveLobby()">Sair da Partida</button>
+        <button class="danger" onclick="leaveLobby()">Render-se (Sair)</button>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        // Configurado explicitamente para usar Polling HTTP estável para contornar o firewall do Render
-        const socket = io(window.location.origin, { transports: ['polling'] });
+        // Habilita canal WebSocket com fallback seguro de handshake longo
+        const socket = io(window.location.origin, { 
+            transports: ['websocket', 'polling'],
+            upgrade: true
+        });
+        
         let myRole = null;
         let selectedCard = 'gigante';
 
@@ -74,7 +82,7 @@
 
         socket.on('update_lobby_list', (list) => {
             const listDiv = document.getElementById('lobbyList');
-            if (list.length === 0) { listDiv.innerHTML = "Nenhuma sala disponível... Crie uma!"; return; }
+            if (list.length === 0) { listDiv.innerHTML = "Nenhuma sala aberta no momento..."; return; }
             listDiv.innerHTML = "";
             list.forEach(l => {
                 listDiv.innerHTML += `<div class="lobby-item"><span>⚔️ <strong>${l.creator}</strong></span><button onclick="directJoin('${l.id}')">Batalhar</button></div>`;
@@ -84,7 +92,7 @@
         socket.on('lobby_created', (lobby) => {
             myRole = 'p1';
             showScreen('gameScreen');
-            document.getElementById('lobbyTitle').innerText = `CÓDIGO: ${lobby.id}`;
+            document.getElementById('lobbyTitle').innerText = `ARENA ID: ${lobby.id}`;
             document.getElementById('lobbyWaitingInfo').style.display = "block";
             document.getElementById('gamePlayArea').style.display = "none";
         });
@@ -95,12 +103,12 @@
             document.getElementById('gamePlayArea').style.display = "block";
             const p1 = lobby.players.find(p => p.role === 'p1').name;
             const p2 = lobby.players.find(p => p.role === 'p2').name;
-            document.getElementById('playerInfo').innerText = `🔵 ${p1} VS 🔴 ${p2}`;
+            document.getElementById('playerInfo').innerText = `🔵 ${p1}  vs  🔴 ${p2}`;
         });
 
         socket.on('join_error', (msg) => alert(msg));
         socket.on('opponent_left', (msg) => { alert(msg); backToMenu(); });
-        socket.on('game_over', (winner) => { alert(`FIM DE JOGO!\nVencedor: ${winner}`); backToMenu(); });
+        socket.on('game_over', (winner) => { alert(`🏆 FIM DE BATALHA! 🏆\nO Vencedor foi o: ${winner}`); backToMenu(); });
 
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
@@ -112,38 +120,97 @@
                 document.getElementById('elixirText').innerText = `Elixir: ${Math.floor(el)}/10`;
             }
 
-            ctx.fillStyle = '#55b655'; ctx.fillRect(0,0,400,600); 
-            ctx.fillStyle = '#2980b9'; ctx.fillRect(0, 285, 400, 30); 
-            
-            ctx.fillStyle = '#7f8c8d';
-            ctx.fillRect(60, 280, 45, 40);
-            ctx.fillRect(295, 280, 45, 40);
+            // 1. DESENHAR ESTILO ARENA CLASH
+            // Gramado Realista com faixas de corte
+            for(let i=0; i<12; i++){
+                ctx.fillStyle = i % 2 === 0 ? '#45a247' : '#4bb34f';
+                ctx.fillRect(0, i*50, 400, 50);
+            }
 
-            ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.lineWidth = 3;
+            // Rio com Gradiente e Bordas de terra
+            let rioGrad = ctx.createLinearGradient(0, 285, 0, 315);
+            rioGrad.addColorStop(0, '#1d4ed8'); rioGrad.addColorStop(0.5, '#3b82f6'); rioGrad.addColorStop(1, '#1d4ed8');
+            ctx.fillStyle = rioGrad; ctx.fillRect(0, 285, 400, 30);
+            
+            // Pontes Estilizadas de Madeira/Pedra com Bordas
+            ctx.fillStyle = '#6b7280'; 
+            ctx.fillRect(55, 280, 50, 40); ctx.fillRect(295, 280, 50, 40);
+            ctx.fillStyle = '#4b5563';
+            ctx.fillRect(55, 280, 50, 6); ctx.fillRect(55, 314, 50, 6);
+            ctx.fillRect(295, 280, 50, 6); ctx.fillRect(295, 314, 50, 6);
+
+            // Linha divisória
+            ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.lineWidth = 2;
             ctx.beginPath(); ctx.moveTo(0,300); ctx.lineTo(400,300); ctx.stroke();
 
+            // 2. DESENHAR MAPA DE CASTELOS/TORRES ESTILIZADAS
             for (let name in state.towers) {
                 let t = state.towers[name];
                 if (!t.alive) continue;
 
-                ctx.fillStyle = name.startsWith('p1') ? '#2980b9' : '#c0392b';
+                let isP1 = name.startsWith('p1');
                 let size = t.type === 'king' ? 44 : 32;
-                ctx.fillRect(t.x - size/2, t.y - size/2, size, size);
 
-                ctx.fillStyle = '#333'; ctx.fillRect(t.x - 20, t.y - size/2 - 10, 40, 5);
-                ctx.fillStyle = '#2ecc71'; ctx.fillRect(t.x - 20, t.y - size/2 - 10, 40 * (t.hp / t.maxHp), 5);
+                // Sombra da torre
+                ctx.fillStyle = 'rgba(0,0,0,0.25)';
+                ctx.fillRect(t.x - size/2 + 4, t.y - size/2 + 4, size, size);
+
+                // Corpo da torre principal com degradê de time
+                let towerGrad = ctx.createLinearGradient(t.x - size/2, t.y - size/2, t.x + size/2, t.y + size/2);
+                if (isP1) {
+                    towerGrad.addColorStop(0, '#3b82f6'); towerGrad.addColorStop(1, '#1d4ed8');
+                } else {
+                    towerGrad.addColorStop(0, '#ef4444'); towerGrad.addColorStop(1, '#b91c1c');
+                }
+                ctx.fillStyle = towerGrad;
+                ctx.fillRect(t.x - size/2, t.y - size/2, size, size);
+                
+                // Detalhe superior (Almênas de Castelo)
+                ctx.fillStyle = '#d1d5db';
+                ctx.fillRect(t.x - size/2, t.y - size/2, size, 6);
+
+                // Detalhe da Coroa no Rei
+                if(t.type === 'king') {
+                    ctx.fillStyle = '#f59e0b';
+                    ctx.beginPath();
+                    ctx.moveTo(t.x - 10, t.y - 2); ctx.lineTo(t.x - 6, t.y + 4);
+                    ctx.lineTo(t.x + 6, t.y + 4); ctx.lineTo(t.x + 10, t.y - 2);
+                    ctx.lineTo(t.x, t.y + 1); ctx.closePath(); ctx.fill();
+                }
+
+                // HP Bar Sob a torre bem cuidada
+                ctx.fillStyle = '#1e293b'; ctx.fillRect(t.x - 22, t.y - size/2 - 12, 44, 6);
+                ctx.fillStyle = '#10b981'; ctx.fillRect(t.x - 22, t.y - size/2 - 12, 44 * (t.hp / t.maxHp), 6);
             }
 
+            // 3. DESENHAR TROPAS DINÂMICAS COM TEXTURAS SIMPLES
             state.troops.forEach(troop => {
-                ctx.fillStyle = troop.owner === 'p1' ? '#00d2ff' : '#ff3d00';
-                if (troop.type === 'gigante') ctx.fillStyle = troop.owner === 'p1' ? '#0b53a7' : '#961111';
+                let isP1 = troop.owner === 'p1';
+                
+                // Sombra projetada no chão
+                ctx.fillStyle = 'rgba(0,0,0,0.2)';
+                ctx.beginPath(); ctx.arc(troop.x + 2, troop.y + 3, troop.size, 0, Math.PI * 2); ctx.fill();
+
+                // Cor Base da Tropa conforme Tipo e Lado
+                if (troop.type === 'gigante') {
+                    ctx.fillStyle = isP1 ? '#1e3a8a' : '#7f1d1d'; // Azul Escuro / Vermelho Escuro
+                } else if (troop.type === 'arqueiro') {
+                    ctx.fillStyle = isP1 ? '#06b6d4' : '#ec4899'; // Ciano / Rosa
+                } else {
+                    ctx.fillStyle = isP1 ? '#10b981' : '#f59e0b'; // Verde Goblin / Laranja Goblin
+                }
 
                 ctx.beginPath();
                 ctx.arc(troop.x, troop.y, troop.size, 0, Math.PI * 2);
                 ctx.fill();
 
-                ctx.fillStyle = '#333'; ctx.fillRect(troop.x - 12, troop.y - troop.size - 8, 24, 4);
-                ctx.fillStyle = '#2ecc71'; ctx.fillRect(troop.x - 12, troop.y - troop.size - 8, 24 * (troop.hp / troop.maxHp), 4);
+                // Detalhe interno do boneco (Núcleo luminoso de time)
+                ctx.fillStyle = isP1 ? '#60a5fa' : '#f87171';
+                ctx.beginPath(); ctx.arc(troop.x, troop.y, troop.size / 2.2, 0, Math.PI * 2); ctx.fill();
+
+                // HP Bar da Tropa
+                ctx.fillStyle = '#1e293b'; ctx.fillRect(troop.x - 14, troop.y - troop.size - 9, 28, 4);
+                ctx.fillStyle = '#10b981'; ctx.fillRect(troop.x - 14, troop.y - troop.size - 9, 28 * (troop.hp / troop.maxHp), 4);
             });
         });
 
