@@ -1,40 +1,93 @@
 const express = require('express');
 const app = express();
 const http = require('http').createServer(app);
-const io = require('socket.io')(http, {
-    cors: { origin: "*" } // Permite conexões de fora (essencial para o Render)
-});
+const io = require('socket.io')(http, { cors: { origin: "*" } });
 
-// Serve os arquivos da pasta 'public' (onde vai ficar nosso jogo)
 app.use(express.static('public'));
 
-let players = [];
-let gameState = {
-    elixir: { p1: 0, p2: 0 },
-    troops: [] // Guardará as tropas em campo: { id, x, y, owner }
-};
+// Banco de dados em memória para os lobbies
+let lobbies = {}; 
+
+// Função auxiliar para gerar ID do Lobby (Ex: U83J4)
+function generateLobbyId() {
+    return Math.random().toString(36).substring(2, 7).toUpperCase();
+}
 
 io.on('connection', (socket) => {
-    console.log(`Usuário conectado: ${socket.id}`);
+    console.log(`Conectado: ${socket.id}`);
 
-    // Limite de 2 jogadores para o teste
-    if (players.length < 2) {
-        players.push(socket.id);
-        socket.emit('player_assignment', players.length); // Diz se é Player 1 ou 2
-    } else {
-        socket.emit('spectator');
-    }
+    // Envia a lista de lobbies disponíveis assim que o cliente conecta
+    socket.emit('update_lobby_list', Object.values(lobbies).filter(l => !l.isGameStarted && l.players.length < 2));
 
-    // Quando um jogador joga uma carta
+    // 1. CRIAR LOBBY
+    socket.on('create_lobby', (username) => {
+        const lobbyId = generateLobbyId();
+        lobbies[lobbyId] = {
+            id: lobbyId,
+            creator: username,
+            players: [{ id: socket.id, name: username, role: 'p1' }],
+            isGameStarted: false,
+            gameState: { elixir: { p1: 0, p2: 0 }, troops: [] }
+        };
+
+        socket.join(lobbyId);
+        socket.emit('lobby_created', lobbies[lobbyId]);
+        updateAllLobbyLists();
+    });
+
+    // 2. ENTRAR EM LOBBY (Por ID ou clicando na lista)
+    socket.on('join_lobby', ({ lobbyId, username }) => {
+        const lobby = lobbies[lobbyId.toUpperCase()];
+
+        if (!lobby) {
+            return socket.emit('join_error', 'Lobby não encontrado!');
+        }
+        if (lobby.players.length >= 2) {
+            return socket.emit('join_error', 'Lobby está cheio!');
+        }
+
+        lobby.players.push({ id: socket.id, name: username, role: 'p2' });
+        socket.join(lobby.id);
+        
+        // Avisa a sala que o jogo vai começar
+        lobby.isGameStarted = true;
+        io.to(lobby.id).emit('game_start', lobby);
+        
+        updateAllLobbyLists();
+    });
+
+    // 3. ENTRAR EM LOBBY ALEATÓRIO
+    socket.on('join_random', (username) => {
+        const availableLobbies = Object.values(lobbies).filter(l => !l.isGameStarted && l.players.length < 2);
+        
+        if (availableLobbies.length > 0) {
+            const randomLobby = availableLobbies[Math.floor(Math.random() * availableLobbies.length)];
+            randomLobby.players.push({ id: socket.id, name: username, role: 'p2' });
+            socket.join(randomLobby.id);
+            randomLobby.isGameStarted = true;
+            io.to(randomLobby.id).emit('game_start', randomLobby);
+            updateAllLobbyLists();
+        } else {
+            socket.emit('join_error', 'Nenhum lobby público disponível no momento. Crie um!');
+        }
+    });
+
+    // 4. ABANDONAR / SAIR DO LOBBY OU PARTIDA
+    socket.on('leave_lobby', () => {
+        handleDisconnectOrLeave(socket);
+    });
+
+    // 5. ENVIAR TROPA (Lógica do jogo adaptada por sala)
     socket.on('spawn_troop', (data) => {
-        const playerIndex = players.indexOf(socket.id);
-        const role = playerIndex === 0 ? 'p1' : 'p2';
+        const lobby = Object.values(lobbies).find(l => l.players.some(p => p.id === socket.id));
+        if (!lobby || !lobby.isGameStarted) return;
 
-        // Valida se tem elixir (custo fixo de 3 para o teste)
-        if (gameState.elixir[role] >= 3) {
-            gameState.elixir[role] -= 3;
-            
-            gameState.troops.push({
+        const player = lobby.players.find(p => p.id === socket.id);
+        const role = player.role;
+
+        if (lobby.gameState.elixir[role] >= 3) {
+            lobby.gameState.elixir[role] -= 3;
+            lobby.gameState.troops.push({
                 id: Math.random().toString(36).substr(2, 9),
                 x: data.x,
                 y: data.y,
@@ -44,32 +97,49 @@ io.on('connection', (socket) => {
     });
 
     socket.on('disconnect', () => {
-        players = players.filter(id => id !== socket.id);
-        console.log(`Usuário desconectado: ${socket.id}`);
+        handleDisconnectOrLeave(socket);
     });
 });
 
-// Game Loop: Atualiza o estado do jogo 30 vezes por segundo (30 FPS)
-setInterval(() => {
-    // Regenera elixir até o limite de 10
-    if (gameState.elixir.p1 < 10) gameState.elixir.p1 += 0.03;
-    if (gameState.elixir.p2 < 10) gameState.elixir.p2 += 0.03;
+// Remove jogador e limpa a sala
+function handleDisconnectOrLeave(socket) {
+    Object.keys(lobbies).forEach(lobbyId => {
+        const lobby = lobbies[lobbyId];
+        const playerIndex = lobby.players.findIndex(p => p.id === socket.id);
 
-    // Movimenta as tropas na vertical (simulando avanço para a torre)
-    gameState.troops.forEach(troop => {
-        if (troop.owner === 'p1') {
-            troop.y -= 2; // P1 avança para cima
-        } else {
-            troop.y += 2; // P2 avança para baixo
+        if (playerIndex !== -1) {
+            socket.leave(lobbyId);
+            // Se o jogo já tinha começado ou o criador saiu, cancela tudo e avisa o outro
+            io.to(lobbyId).emit('opponent_left', 'O outro jogador abandonou a sessão.');
+            delete lobbies[lobbyId];
         }
     });
+    updateAllLobbyLists();
+}
 
-    // Envia o estado atualizado para todo mundo
-    io.emit('game_update', gameState);
+function updateAllLobbyLists() {
+    const list = Object.values(lobbies).filter(l => !l.isGameStarted && l.players.length < 2);
+    io.emit('update_lobby_list', list);
+}
+
+// Loop dos jogos ativos (30 FPS)
+setInterval(() => {
+    Object.keys(lobbies).forEach(lobbyId => {
+        const lobby = lobbies[lobbyId];
+        if (!lobby.isGameStarted) return;
+
+        let state = lobby.gameState;
+        if (state.elixir.p1 < 10) state.elixir.p1 += 0.03;
+        if (state.elixir.p2 < 10) state.elixir.p2 += 0.03;
+
+        state.troops.forEach(troop => {
+            if (troop.owner === 'p1') troop.y -= 2;
+            else troop.y += 2;
+        });
+
+        io.to(lobbyId).emit('game_update', state);
+    });
 }, 1000 / 30);
 
-// Substitua a linha antiga por esta:
-const PORT = process.env.PORT || 10000; // O Render costuma usar a 10000 por padrão
-http.listen(PORT, () => {
-    console.log(`Servidor rodando na porta ${PORT}`);
-});
+const PORT = process.env.PORT || 10000;
+http.listen(PORT, () => console.log(`Rodando na porta ${PORT}`));

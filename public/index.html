@@ -2,70 +2,181 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Mini Clash Royale</title>
+    <title>Clash Royale Multiplayer</title>
     <style>
-        body { background: #222; text-align: center; color: white; font-family: sans-serif; }
+        body { background: #222; text-align: center; color: white; font-family: Arial, sans-serif; }
+        .screen { display: none; margin-top: 20px; }
+        .active { display: block; }
+        input, button { padding: 10px; margin: 5px; font-size: 16px; border-radius: 5px; border: none; }
+        button { background: #3498db; color: white; cursor: pointer; font-weight: bold; }
+        button:hover { background: #2980b9; }
+        .danger { background: #e74c3c; }
+        .danger:hover { background: #c0392b; }
         canvas { background: #4aab4a; border: 4px solid #fff; display: block; margin: 10px auto; }
+        #lobbyList { max-width: 400px; margin: 20px auto; background: #333; padding: 10px; border-radius: 5px; }
+        .lobby-item { display: flex; justify-content: space-between; padding: 8px; border-bottom: 1px solid #444; }
     </style>
 </head>
 <body>
-    <h2>Mini Clash Online</h2>
-    <h3 id="role">Aguardando jogador...</h3>
-    <h3 id="elixir">Elixir: 0</h3>
-    <canvas id="gameCanvas" width="400" height="600"></canvas>
+
+    <div id="menuScreen" class="screen active">
+        <h2>Mini Clash Online</h2>
+        <input type="text" id="usernameInput" placeholder="Seu Nickname"><br><br>
+        
+        <button onclick="createLobby()">Criar Lobby</button>
+        <button onclick="joinRandom()">Partida Rápida (Aleatória)</button>
+        
+        <br><br>
+        <hr style="width: 50%; border-color: #444;">
+        
+        <h3>Buscar por ID da Sala</h3>
+        <input type="text" id="lobbyIdInput" placeholder="Ex: U83J4">
+        <button onclick="joinLobbyById()">Entrar no Lobby</button>
+
+        <h3>Salas Disponíveis (Criador)</h3>
+        <div id="lobbyList">Nenhum lobby criado no momento...</div>
+    </div>
+
+    <div id="gameScreen" class="screen">
+        <div id="lobbyWaitingInfo">
+            <h2 id="lobbyTitle">Lobby ID: -----</h2>
+            <h3 style="color: #f1c40f;">Aguardando oponente entrar... Mande o ID para seu amigo!</h3>
+        </div>
+        
+        <div id="gamePlayArea" style="display: none;">
+            <h3 id="playerInfo">Você vs Oponente</h3>
+            <h3 id="elixirDisplay">Elixir: 0</h3>
+            <canvas id="gameCanvas" width="400" height="600"></canvas>
+        </div>
+        
+        <br>
+        <button class="danger" onclick="leaveLobby()">Abandonar / Sair</button>
+    </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        // Substitua a linha antiga por esta:
         const socket = io(window.location.origin);
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        
-        let myRole = null; // 'p1' ou 'p2'
-        let currentElixir = 0;
+        let myRole = null;
+        let myUsername = "";
 
-        socket.on('player_assignment', (num) => {
-            myRole = 'p' + num;
-            document.getElementById('role').innerText = `Você é o Jogador ${num}`;
-        });
-
-        // Escuta as atualizações do servidor e desenha na tela
-        socket.on('game_update', (state) => {
-            if (myRole) {
-                currentElixir = Math.floor(state.elixir[myRole]);
-                document.getElementById('elixir').innerText = `Elixir: ${currentElixir} (Custo da Tropa: 3)`;
+        // Atualiza a lista de lobbies na tela inicial
+        socket.on('update_lobby_list', (list) => {
+            const listDiv = document.getElementById('lobbyList');
+            if (list.length === 0) {
+                listDiv.innerHTML = "Nenhum lobby criado no momento...";
+                return;
             }
-
-            // Limpa o canvas para o próximo frame
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            // Desenha as "Torres" fixas para referência estética
-            ctx.fillStyle = 'blue';
-            ctx.fillRect(175, 550, 50, 50); // Torre P1 (baixo)
-            ctx.fillStyle = 'red';
-            ctx.fillRect(175, 0, 50, 50);   // Torre P2 (cima)
-
-            // Desenha as tropas enviadas pelo servidor
-            state.troops.forEach(troop => {
-                ctx.fillStyle = troop.owner === 'p1' ? 'cyan' : 'orange';
-                ctx.beginPath();
-                ctx.arc(troop.x, troop.y, 15, 0, Math.PI * 2);
-                ctx.fill();
+            listDiv.innerHTML = "";
+            list.forEach(lobby => {
+                listDiv.innerHTML += `
+                    <div class="lobby-item">
+                        <span><strong>${lobby.creator}</strong> (ID: ${lobby.id})</span>
+                        <button onclick="directJoin('${lobby.id}')">Entrar</button>
+                    </div>`;
             });
         });
 
-        // Clique no mapa para spawnar uma tropa
+        // Sucesso ao criar
+        socket.on('lobby_created', (lobby) => {
+            myRole = 'p1';
+            showScreen('gameScreen');
+            document.getElementById('lobbyTitle').innerText = `Lobby ID: ${lobby.id}`;
+            document.getElementById('lobbyWaitingInfo').style.display = "block";
+            document.getElementById('gamePlayArea').style.display = "none";
+        });
+
+        // Jogo Iniciou (Oponente entrou)
+        socket.on('game_start', (lobby) => {
+            if(!myRole) myRole = 'p2'; // Se não era p1, então é o p2 que acabou de entrar
+            document.getElementById('lobbyWaitingInfo').style.display = "none";
+            document.getElementById('gamePlayArea').style.display = "block";
+            
+            const p1Name = lobby.players.find(p => p.role === 'p1').name;
+            const p2Name = lobby.players.find(p => p.role === 'p2').name;
+            document.getElementById('playerInfo').innerText = `${p1Name} (Azul) VS ${p2Name} (Laranja)`;
+        });
+
+        // Erros de conexão
+        socket.on('join_error', (msg) => { alert(msg); });
+
+        // Alguém desconectou/abandonou
+        socket.on('opponent_left', (msg) => {
+            alert(msg);
+            backToMenu();
+        });
+
+        // Atualização do Loop de Jogo
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        socket.on('game_update', (state) => {
+            if (myRole) {
+                const currentElixir = Math.floor(state.elixir[myRole]);
+                document.getElementById('elixirDisplay').innerText = `Elixir: ${currentElixir} (Custo: 3)`;
+            }
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // Torres
+            ctx.fillStyle = 'blue'; ctx.fillRect(175, 550, 50, 50);
+            ctx.fillStyle = 'red';  ctx.fillRect(175, 0, 50, 50);
+
+            // Tropas
+            state.troops.forEach(troop => {
+                ctx.fillStyle = troop.owner === 'p1' ? 'cyan' : 'orange';
+                ctx.beginPath(); ctx.arc(troop.x, troop.y, 15, 0, Math.PI * 2); ctx.fill();
+            });
+        });
+
         canvas.addEventListener('click', (e) => {
             if (!myRole) return;
-            
-            // Pega a posição do clique relativa ao canvas
             const rect = canvas.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
-
-            // Envia o comando de spawn para o servidor
-            socket.emit('spawn_troop', { x, y });
+            socket.emit('spawn_troop', { x: e.clientX - rect.left, y: e.clientY - rect.top });
         });
+
+        // --- FUNÇÕES DE BOTÃO ---
+        function getUsername() {
+            const name = document.getElementById('usernameInput').value.trim();
+            if(!name) { alert("Insira um Nickname primeiro!"); return null; }
+            myUsername = name;
+            return name;
+        }
+
+        function createLobby() {
+            const name = getUsername();
+            if(name) socket.emit('create_lobby', name);
+        }
+
+        function joinRandom() {
+            const name = getUsername();
+            if(name) socket.emit('join_random', name);
+        }
+
+        function joinLobbyById() {
+            const name = getUsername();
+            const id = document.getElementById('lobbyIdInput').value.trim();
+            if(name && id) socket.emit('join_lobby', { lobbyId: id, username: name });
+        }
+
+        function directJoin(id) {
+            const name = getUsername();
+            if(name) socket.emit('join_lobby', { lobbyId: id, username: name });
+        }
+
+        function leaveLobby() {
+            socket.emit('leave_lobby');
+            backToMenu();
+        }
+
+        function backToMenu() {
+            myRole = null;
+            showScreen('menuScreen');
+        }
+
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(screenId).add('active' ? screenId : s.classList.add('active')); // Ajuste simples de toggle
+            document.getElementById(screenId).className = "screen active";
+        }
     </script>
 </body>
 </html>
