@@ -1,0 +1,108 @@
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  margin: 0; padding: 0; height: 100%;
+  background: linear-gradient(180deg, #1a2a4a 0%, #0d1626 100%);
+  color: #fff;
+  font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+  overscroll-behavior: none;
+  user-select: none;
+}
+
+.screen {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 20px;
+  text-align: center;
+}
+.screen.active { display: flex; }
+
+h1 { font-size: 2.2em; margin: 0 0 4px; letter-spacing: 1px; color: #ffd54f; text-shadow: 0 2px 0 #000; }
+h2 { color: #ffd54f; }
+.subtitle { color: #9db3d6; margin-bottom: 30px; }
+
+.btn {
+  border: none;
+  border-radius: 12px;
+  padding: 14px 28px;
+  font-size: 1.05em;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 4px 0 rgba(0,0,0,0.3);
+  transition: transform 0.06s;
+}
+.btn:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,0.3); }
+.btn-primary { background: linear-gradient(180deg, #4fc3f7, #0288d1); color: #fff; }
+.btn-secondary { background: linear-gradient(180deg, #ffca28, #ff8f00); color: #3e2723; }
+
+.divider { margin: 20px 0; color: #6b7fa3; }
+
+.join-row { display: flex; gap: 10px; }
+#input-code {
+  width: 130px; text-align: center; font-size: 1.2em; letter-spacing: 3px;
+  text-transform: uppercase; padding: 12px; border-radius: 10px; border: none;
+}
+.error { color: #ff5252; min-height: 20px; margin-top: 10px; }
+
+.room-code {
+  font-size: 2.6em; letter-spacing: 10px; font-weight: bold;
+  background: rgba(255,255,255,0.08); padding: 14px 24px; border-radius: 12px;
+  margin: 16px 0; color: #ffd54f;
+}
+.waiting-msg { margin-top: 20px; color: #9db3d6; }
+.dots::after { content: '...'; animation: dots 1.2s steps(4, end) infinite; }
+@keyframes dots { 0%,20% {content:'.'} 40% {content:'..'} 60%,100% {content:'...'} }
+
+#screen-game.active { flex-direction: column; justify-content: flex-start; padding: 8px; min-height: 100vh; }
+
+#hud-top {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  width: 100%; max-width: 380px; margin-bottom: 6px;
+}
+#timer { font-size: 1.3em; font-weight: bold; background: rgba(0,0,0,0.35); padding: 4px 16px; border-radius: 10px; }
+#double-elixir-badge {
+  background: #d500f9; color: #fff; padding: 4px 10px; border-radius: 8px; font-size: 0.8em; font-weight: bold;
+  animation: pulse 1s infinite;
+}
+.hidden { display: none !important; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+
+#canvas-wrap { width: 100%; max-width: 380px; touch-action: none; }
+#arena { width: 100%; height: auto; display: block; border-radius: 10px; box-shadow: 0 0 0 3px #2c3e50, 0 6px 20px rgba(0,0,0,0.5); }
+
+#hud-bottom { width: 100%; max-width: 380px; margin-top: 8px; }
+
+#elixir-bar {
+  position: relative; height: 26px; background: rgba(0,0,0,0.4); border-radius: 13px;
+  overflow: hidden; margin-bottom: 8px; border: 2px solid #4a148c;
+}
+#elixir-fill {
+  height: 100%; width: 50%; background: linear-gradient(180deg, #e040fb, #aa00ff);
+  transition: width 0.2s;
+}
+#elixir-count {
+  position: absolute; top: 0; left: 10px; height: 100%; display: flex; align-items: center;
+  font-weight: bold; font-size: 0.9em; text-shadow: 0 1px 2px #000;
+}
+
+#hand { display: flex; gap: 6px; justify-content: center; }
+.card {
+  flex: 1; max-width: 84px; aspect-ratio: 3/4; border-radius: 10px; position: relative;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  border: 3px solid #2c3e50; cursor: pointer; color: #fff;
+  font-size: 0.7em; font-weight: bold; text-align: center; padding: 2px;
+}
+.card .icon { font-size: 1.8em; }
+.card .cost {
+  position: absolute; top: -8px; left: -8px; background: #d500f9; color: #fff;
+  border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;
+  font-size: 0.9em; border: 2px solid #fff;
+}
+.card.selected { border-color: #ffd54f; transform: translateY(-6px); box-shadow: 0 0 12px #ffd54f; }
+.card.disabled { filter: grayscale(0.8) brightness(0.5); cursor: not-allowed; }
+
+#screen-end #end-title { font-size: 2.4em; }
+#end-subtitle { color: #9db3d6; margin-bottom: 24px; font-size: 1.1em; }

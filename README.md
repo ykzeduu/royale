@@ -1,0 +1,79 @@
+# ⚔️ Clash Web
+
+Um jogo web multiplayer 1x1 em tempo real, inspirado no Clash Royale: elixir, cartas, torres e tropas que lutam sozinhas. Feito para você jogar com um amigo, cada um no seu computador/celular, cada um vendo o jogo do seu próprio ponto de vista (sempre com a sua torre embaixo).
+
+## Como funciona (arquitetura)
+
+- **Servidor** (`server.js`): Node.js + Express + Socket.io. É o servidor quem roda toda a simulação do jogo (elixir, movimento das tropas, ataques, torres) e manda o estado atual para os dois jogadores ~20x por segundo. Isso resolve o problema clássico de "cada um vê uma coisa diferente" — os dois clientes só desenham o que o servidor manda, ninguém manda estado próprio.
+- **Cliente** (`public/`): HTML + Canvas + JS puro (sem frameworks), então não precisa de build step.
+- **Salas**: ao criar uma sala, você recebe um código de 4 letras. Seu amigo entra com esse código e a partida começa automaticamente quando os dois estão na sala.
+
+## Rodando localmente
+
+```bash
+npm install
+npm start
+```
+
+Abra `http://localhost:3000` em duas abas (ou peça pra outra pessoa na mesma rede acessar `http://SEU_IP:3000`) para testar com dois jogadores.
+
+## Subindo pro GitHub
+
+```bash
+cd clash-web
+git init
+git add .
+git commit -m "Primeira versão do Clash Web"
+git branch -M main
+git remote add origin https://github.com/SEU_USUARIO/clash-web.git
+git push -u origin main
+```
+
+(Crie o repositório vazio no GitHub antes, sem README/gitignore, pra evitar conflito.)
+
+## Deploy no Render
+
+1. Vá em [render.com](https://render.com) → **New +** → **Web Service**.
+2. Conecte seu repositório do GitHub.
+3. Configure:
+   - **Environment**: Node
+   - **Build Command**: `npm install`
+   - **Start Command**: `npm start`
+   - **Instance Type**: Free está OK para jogar com um amigo.
+4. Clique em **Create Web Service**. Em poucos minutos você recebe uma URL tipo `https://clash-web.onrender.com`.
+5. Mande essa URL pro seu amigo. Um de vocês clica em **Criar Sala**, manda o código pro outro, e o outro clica em **Entrar**.
+
+⚠️ **Importante sobre o plano gratuito do Render**: o serviço "dorme" depois de um tempo sem uso. O primeiro acesso do dia pode demorar uns 30-50 segundos para "acordar" o servidor — é normal, não é bug. Depois disso funciona normalmente.
+
+## Como jogar
+
+- Cada jogador tem 4 cartas na mão (de um baralho de 8) e um contador de elixir que enche sozinho (mais rápido nos últimos 60 segundos, igual "elixir duplo").
+- Toque numa carta pra selecioná-la, depois toque no seu lado do campo (metade mais próxima de você) pra soltar a tropa lá. Feitiços (Bola de Fogo) podem ser jogados em qualquer lugar do mapa.
+- As tropas andam sozinhas em direção às torres inimigas, atacando o que estiver no caminho.
+- Destrua a torre do rei do adversário pra vencer na hora, ou tenha mais torres destruídas quando o tempo (3 minutos) acabar.
+
+## Cartas disponíveis
+
+| Carta | Custo | Estilo |
+|---|---|---|
+| Esqueletos 💀 | 1 | 3 unidades fracas e baratas |
+| Cavaleiro ⚔️ | 3 | Tanque corpo a corpo |
+| Arqueiras 🏹 | 3 | 2 unidades de longo alcance |
+| Mosqueteira 🔫 | 4 | Longo alcance, dano alto |
+| Mini P.E.K.K.A 🗡️ | 4 | Dano corpo a corpo altíssimo |
+| Bola de Fogo 🔥 | 4 | Feitiço de área |
+| Gigante 👊 | 5 | Tanque que só ataca torres |
+| Bárbaros 🪓 | 5 | 4 unidades médias |
+
+## Personalizando / expandindo
+
+- Novas cartas: edite `public/cards.js` (o mesmo arquivo é usado pelo servidor e pelo cliente).
+- Balanceamento de torres/elixir/tempo de partida: `public/constants.js`.
+- Toda a lógica de combate e movimento das tropas está em `server.js`, nas funções `tick`, `updateTroop` e `nextWaypoint`.
+
+## Possíveis melhorias futuras
+
+- Reconexão automática se a internet cair no meio da partida.
+- Fila de espera / matchmaking em vez de código de sala.
+- Tropas voadoras e mais feitiços.
+- Efeitos sonoros e animações de ataque.
