@@ -3,9 +3,8 @@ const app = express();
 const http = require('http').createServer(app);
 const io = require('socket.io')(http, { 
     cors: { origin: "*" },
-    pingTimeout: 30000, // Evita que o Render derrube o Player 2 por falso timeout
-    pingInterval: 5000,
-    transports: ['websocket', 'polling'] 
+    pingTimeout: 60000,
+    pingInterval: 10000
 });
 
 app.use(express.static('public'));
@@ -35,9 +34,11 @@ io.on('connection', (socket) => {
             gameState: {
                 elixir: { p1: 5, p2: 5 },
                 towers: {
+                    // P1 - Base Inferior (Azul)
                     p1_king: { hp: 1500, maxHp: 1500, x: 200, y: 540, type: 'king', alive: true },
                     p1_left: { hp: 1000, maxHp: 1000, x: 85, y: 450, type: 'princess', alive: true },
                     p1_right: { hp: 1000, maxHp: 1000, x: 315, y: 450, type: 'princess', alive: true },
+                    // P2 - Base Superior (Vermelho)
                     p2_king: { hp: 1500, maxHp: 1500, x: 200, y: 60, type: 'king', alive: true },
                     p2_left: { hp: 1000, maxHp: 1000, x: 85, y: 150, type: 'princess', alive: true },
                     p2_right: { hp: 1000, maxHp: 1000, x: 315, y: 150, type: 'princess', alive: true }
@@ -73,11 +74,9 @@ io.on('connection', (socket) => {
             io.to(lobby.id).emit('game_start', lobby);
             sendGlobalLobbyUpdate();
         } else {
-            socket.emit('join_error', 'Nenhum lobby disponível no momento.');
+            socket.emit('join_error', 'Nenhum oponente esperando.');
         }
     });
-
-    socket.on('leave_lobby', () => { handleDisconnectOrLeave(socket); });
 
     socket.on('spawn_troop', (data) => {
         const lobby = Object.values(lobbies).find(l => l.players.some(p => p.id === socket.id));
@@ -88,15 +87,25 @@ io.on('connection', (socket) => {
         const typeConfig = TROOP_TYPES[data.type];
 
         if (typeConfig && lobby.gameState.elixir[role] >= typeConfig.cost) {
-            if (role === 'p1' && data.y < 310) return; 
-            if (role === 'p2' && data.y > 290) return; 
+            let spawnX = data.x;
+            let spawnY = data.y;
+
+            // CRUCIAL: Se for o Player 2, ele vê a tela invertida. Revertemos a coordenada pro servidor entender!
+            if (role === 'p2') {
+                spawnX = 400 - spawnX;
+                spawnY = 600 - spawnY;
+            }
+
+            // Restrições de invocação (Não pode invocar no campo inimigo)
+            if (role === 'p1' && spawnY < 310) return; 
+            if (role === 'p2' && spawnY > 290) return; 
 
             lobby.gameState.elixir[role] -= typeConfig.cost;
             lobby.gameState.troops.push({
                 id: Math.random().toString(36).substr(2, 9),
                 type: data.type,
-                x: data.x,
-                y: data.y,
+                x: spawnX,
+                y: spawnY,
                 hp: typeConfig.hp,
                 maxHp: typeConfig.maxHp,
                 owner: role,
@@ -108,6 +117,7 @@ io.on('connection', (socket) => {
         }
     });
 
+    socket.on('leave_lobby', () => { handleDisconnectOrLeave(socket); });
     socket.on('disconnect', () => { handleDisconnectOrLeave(socket); });
 });
 
@@ -116,7 +126,7 @@ function handleDisconnectOrLeave(socket) {
         const lobby = lobbies[lobbyId];
         if (lobby.players.some(p => p.id === socket.id)) {
             socket.leave(lobbyId);
-            io.to(lobbyId).emit('opponent_left', 'O oponente desconectou.');
+            io.to(lobbyId).emit('opponent_left', 'O oponente saiu ou desconectou.');
             delete lobbies[lobbyId];
         }
     });
@@ -128,7 +138,7 @@ function sendGlobalLobbyUpdate() {
     io.emit('update_lobby_list', list);
 }
 
-// LOOP DO JOGO 30 FPS - CÁLCULOS ROBUSTOS
+// LOOP DO JOGO - ENGINE ATUALIZADA
 setInterval(() => {
     Object.keys(lobbies).forEach(lobbyId => {
         const lobby = lobbies[lobbyId];
@@ -136,14 +146,14 @@ setInterval(() => {
 
         let state = lobby.gameState;
 
-        // Elixir Balanceado: Carrega 1 gota a cada ~2.8 segundos (0.012 por frame a 30 FPS)
+        // Elixir carregando perfeitamente sincronizado (fiel ao jogo original)
         if (state.elixir.p1 < 10) state.elixir.p1 += 0.012;
         if (state.elixir.p2 < 10) state.elixir.p2 += 0.012;
 
         state.troops.forEach((troop) => {
             const opp = troop.owner === 'p1' ? 'p2' : 'p1';
 
-            // Buscar alvo de estrutura prioritária viva
+            // Alvos vivos
             let targets = [];
             if (state.towers[`${opp}_left`].alive) targets.push(state.towers[`${opp}_left`]);
             if (state.towers[`${opp}_right`].alive) targets.push(state.towers[`${opp}_right`]);
@@ -159,21 +169,15 @@ setInterval(() => {
             let targetX = primaryTarget.x;
             let targetY = primaryTarget.y;
 
-            // IA Antitrava das pontes fluida baseada em quadrantes
+            // Roteamento inteligente pelas Pontes (Sem travar em quinas)
             const bridgeX = troop.x < 200 ? 80 : 320;
             if (troop.owner === 'p1' && troop.y > 310) {
-                if (Math.abs(troop.x - bridgeX) > 10) {
-                    targetX = bridgeX;
-                    targetY = 320; 
-                }
+                if (Math.abs(troop.x - bridgeX) > 15) { targetX = bridgeX; targetY = 325; }
             } else if (troop.owner === 'p2' && troop.y < 290) {
-                if (Math.abs(troop.x - bridgeX) > 10) {
-                    targetX = bridgeX;
-                    targetY = 280;
-                }
+                if (Math.abs(troop.x - bridgeX) > 15) { targetX = bridgeX; targetY = 275; }
             }
 
-            // Agro contra tropas inimigas próximas
+            // Sistema de Visão/Ataque contra tropas inimigas
             let closestEnemy = null;
             let minDistEnemy = Infinity;
             state.troops.forEach(other => {
@@ -184,18 +188,17 @@ setInterval(() => {
             });
 
             let currentDist = 0;
-            if (closestEnemy && minDistEnemy < 100) {
-                targetX = closestEnemy.x;
-                targetY = closestEnemy.y;
+            if (closestEnemy && minDistEnemy < 110) {
+                targetX = closestEnemy.x; targetY = closestEnemy.y;
                 currentDist = minDistEnemy;
             } else {
                 currentDist = Math.hypot(targetX - troop.x, targetY - troop.y);
             }
 
-            // Ataque e Movimentação Linear Limpa
+            // Aplicação de Dano Fluido
             if (closestEnemy && currentDist <= troop.range + closestEnemy.size) {
                 closestEnemy.hp -= troop.damage / 30;
-            } else if (!closestEnemy && currentDist <= troop.range + 22) {
+            } else if (!closestEnemy && currentDist <= troop.range + 25) {
                 primaryTarget.hp -= troop.damage / 30;
                 if (primaryTarget.hp <= 0) primaryTarget.alive = false;
             } else {
@@ -208,10 +211,10 @@ setInterval(() => {
         state.troops = state.troops.filter(t => t.hp > 0);
 
         if (!state.towers.p1_king.alive) {
-            io.to(lobbyId).emit('game_over', 'Jogador Vermelho (Cima)');
+            io.to(lobbyId).emit('game_over', 'Jogador Vermelho');
             delete lobbies[lobbyId];
         } else if (!state.towers.p2_king.alive) {
-            io.to(lobbyId).emit('game_over', 'Jogador Azul (Baixo)');
+            io.to(lobbyId).emit('game_over', 'Jogador Azul');
             delete lobbies[lobbyId];
         } else {
             io.to(lobbyId).emit('game_update', state);
@@ -220,4 +223,4 @@ setInterval(() => {
 }, 1000 / 30);
 
 const PORT = process.env.PORT || 10000;
-http.listen(PORT, () => console.log(`Servidor rodando`));
+http.listen(PORT, () => console.log('Servidor operacional na porta ' + PORT));
