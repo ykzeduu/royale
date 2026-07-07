@@ -25,7 +25,6 @@
 </head>
 <body>
 
-    <!-- TELA INICIAL -->
     <div id="menuScreen" class="screen active">
         <h2>⚔️ Clash Royale Web Arena ⚔️</h2>
         <input type="text" id="usernameInput" placeholder="Seu Nickname"><br>
@@ -38,7 +37,6 @@
         <div id="lobbyList">Nenhuma sala criada. Crie uma acima!</div>
     </div>
 
-    <!-- TELA DA ARENA -->
     <div id="gameScreen" class="screen">
         <div id="lobbyWaitingInfo">
             <h2 id="lobbyTitle">Lobby ID: -----</h2>
@@ -63,7 +61,8 @@
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        const socket = io(window.location.origin, { transports: ['websocket', 'polling'] });
+        // Configurado explicitamente para usar Polling HTTP estável para contornar o firewall do Render
+        const socket = io(window.location.origin, { transports: ['polling'] });
         let myRole = null;
         let selectedCard = 'gigante';
 
@@ -113,20 +112,16 @@
                 document.getElementById('elixirText').innerText = `Elixir: ${Math.floor(el)}/10`;
             }
 
-            // DESENHAR ARENA CLASH ROYALE
-            ctx.fillStyle = '#55b655'; ctx.fillRect(0,0,400,600); // Campo
-            ctx.fillStyle = '#2980b9'; ctx.fillRect(0, 285, 400, 30); // Rio
+            ctx.fillStyle = '#55b655'; ctx.fillRect(0,0,400,600); 
+            ctx.fillStyle = '#2980b9'; ctx.fillRect(0, 285, 400, 30); 
             
-            // Pontes de pedra
             ctx.fillStyle = '#7f8c8d';
             ctx.fillRect(60, 280, 45, 40);
             ctx.fillRect(295, 280, 45, 40);
 
-            // Linha do meio campo
             ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.lineWidth = 3;
             ctx.beginPath(); ctx.moveTo(0,300); ctx.lineTo(400,300); ctx.stroke();
 
-            // DESENHAR AS 6 TORRES (3 DE CADA LADO)
             for (let name in state.towers) {
                 let t = state.towers[name];
                 if (!t.alive) continue;
@@ -135,12 +130,10 @@
                 let size = t.type === 'king' ? 44 : 32;
                 ctx.fillRect(t.x - size/2, t.y - size/2, size, size);
 
-                // HP Bar
                 ctx.fillStyle = '#333'; ctx.fillRect(t.x - 20, t.y - size/2 - 10, 40, 5);
                 ctx.fillStyle = '#2ecc71'; ctx.fillRect(t.x - 20, t.y - size/2 - 10, 40 * (t.hp / t.maxHp), 5);
             }
 
-            // DESENHAR TROPAS
             state.troops.forEach(troop => {
                 ctx.fillStyle = troop.owner === 'p1' ? '#00d2ff' : '#ff3d00';
                 if (troop.type === 'gigante') ctx.fillStyle = troop.owner === 'p1' ? '#0b53a7' : '#961111';
@@ -149,7 +142,6 @@
                 ctx.arc(troop.x, troop.y, troop.size, 0, Math.PI * 2);
                 ctx.fill();
 
-                // HP Bar Tropa
                 ctx.fillStyle = '#333'; ctx.fillRect(troop.x - 12, troop.y - troop.size - 8, 24, 4);
                 ctx.fillStyle = '#2ecc71'; ctx.fillRect(troop.x - 12, troop.y - troop.size - 8, 24 * (troop.hp / troop.maxHp), 4);
             });

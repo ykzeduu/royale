@@ -1,7 +1,10 @@
 const express = require('express');
 const app = express();
 const http = require('http').createServer(app);
-const io = require('socket.io')(http, { cors: { origin: "*" } });
+const io = require('socket.io')(http, { 
+    cors: { origin: "*" },
+    transports: ['polling'] // Força Polling estável para garantir o Player 2 no Render
+});
 
 app.use(express.static('public'));
 
@@ -18,6 +21,7 @@ const TROOP_TYPES = {
 };
 
 io.on('connection', (socket) => {
+    // Força atualização imediata de salas disponíveis
     socket.emit('update_lobby_list', Object.values(lobbies).filter(l => !l.isGameStarted && l.players.length < 2));
 
     socket.on('create_lobby', (username) => {
@@ -30,11 +34,9 @@ io.on('connection', (socket) => {
             gameState: {
                 elixir: { p1: 5, p2: 5 },
                 towers: {
-                    // P1 (Azul - Baixo)
                     p1_king: { hp: 1200, maxHp: 1200, x: 200, y: 550, type: 'king', alive: true },
                     p1_left: { hp: 800, maxHp: 800, x: 80, y: 460, type: 'princess', alive: true },
                     p1_right: { hp: 800, maxHp: 800, x: 320, y: 460, type: 'princess', alive: true },
-                    // P2 (Vermelho - Cima)
                     p2_king: { hp: 1200, maxHp: 1200, x: 200, y: 50, type: 'king', alive: true },
                     p2_left: { hp: 800, maxHp: 800, x: 80, y: 140, type: 'princess', alive: true },
                     p2_right: { hp: 800, maxHp: 800, x: 320, y: 140, type: 'princess', alive: true }
@@ -44,7 +46,7 @@ io.on('connection', (socket) => {
         };
         socket.join(lobbyId);
         socket.emit('lobby_created', lobbies[lobbyId]);
-        updateAllLobbyLists();
+        io.emit('update_lobby_list', Object.values(lobbies).filter(l => !l.isGameStarted && l.players.length < 2));
     });
 
     socket.on('join_lobby', ({ lobbyId, username }) => {
@@ -57,7 +59,7 @@ io.on('connection', (socket) => {
         lobby.isGameStarted = true;
         
         io.to(lobby.id).emit('game_start', lobby);
-        updateAllLobbyLists();
+        io.emit('update_lobby_list', Object.values(lobbies).filter(l => !l.isGameStarted && l.players.length < 2));
     });
 
     socket.on('join_random', (username) => {
@@ -68,7 +70,7 @@ io.on('connection', (socket) => {
             socket.join(lobby.id);
             lobby.isGameStarted = true;
             io.to(lobby.id).emit('game_start', lobby);
-            updateAllLobbyLists();
+            io.emit('update_lobby_list', Object.values(lobbies).filter(l => !l.isGameStarted && l.players.length < 2));
         } else {
             socket.emit('join_error', 'Nenhum lobby disponível.');
         }
@@ -85,8 +87,8 @@ io.on('connection', (socket) => {
         const typeConfig = TROOP_TYPES[data.type];
 
         if (typeConfig && lobby.gameState.elixir[role] >= typeConfig.cost) {
-            if (role === 'p1' && data.y < 320) return; // Limite campo P1
-            if (role === 'p2' && data.y > 280) return; // Limite campo P2
+            if (role === 'p1' && data.y < 320) return;
+            if (role === 'p2' && data.y > 280) return;
 
             lobby.gameState.elixir[role] -= typeConfig.cost;
             lobby.gameState.troops.push({
@@ -117,15 +119,10 @@ function handleDisconnectOrLeave(socket) {
             delete lobbies[lobbyId];
         }
     });
-    updateAllLobbyLists();
+    io.emit('update_lobby_list', Object.values(lobbies).filter(l => !l.isGameStarted && l.players.length < 2));
 }
 
-function updateAllLobbyLists() {
-    const list = Object.values(lobbies).filter(l => !l.isGameStarted && l.players.length < 2);
-    io.emit('update_lobby_list', list);
-}
-
-// LOOP DE SIMULAÇÃO (30 FPS)
+// LOOP DE MOVIMENTAÇÃO E ATAQUE (30 FPS)
 setInterval(() => {
     Object.keys(lobbies).forEach(lobbyId => {
         const lobby = lobbies[lobbyId];
@@ -139,7 +136,7 @@ setInterval(() => {
         state.troops.forEach((troop) => {
             const opp = troop.owner === 'p1' ? 'p2' : 'p1';
 
-            // 1. Encontrar Estrutura Alvo Viva mais próxima
+            // 1. Encontrar torre viva mais próxima
             let targets = [];
             if (state.towers[`${opp}_left`].alive) targets.push(state.towers[`${opp}_left`]);
             if (state.towers[`${opp}_right`].alive) targets.push(state.towers[`${opp}_right`]);
@@ -155,46 +152,44 @@ setInterval(() => {
             let targetX = primaryTarget.x;
             let targetY = primaryTarget.y;
 
-            // 2. IA Fiel de Atravessar Pontes Sem Travar
-            // Se a tropa está do seu lado e precisa atravessar o rio (y=285 a y=315)
+            // 2. Inteligência das Pontes Corrigida (Sem travar!)
             if (troop.owner === 'p1' && troop.y > 315) {
-                // Força andar em direção à ponte mais próxima horizontalmente antes de passar
                 let bridgeX = targetX < 200 ? 80 : 320;
-                if (Math.abs(troop.x - bridgeX) > 10) {
-                    targetY = 330; // Mira logo antes da entrada da ponte
+                if (Math.abs(troop.x - bridgeX) > 15) {
+                    targetY = 330;
                     targetX = bridgeX;
                 }
             } else if (troop.owner === 'p2' && troop.y < 285) {
                 let bridgeX = targetX < 200 ? 80 : 320;
-                if (Math.abs(troop.x - bridgeX) > 10) {
+                if (Math.abs(troop.x - bridgeX) > 15) {
                     targetY = 270;
                     targetX = bridgeX;
                 }
             }
 
-            // 3. Buscar Tropa Inimiga por perto para combate
-            let closestEnemyTroop = null;
+            // 3. Buscar Tropa Inimiga por perto
+            let closestEnemy = null;
             let minDistEnemy = Infinity;
             state.troops.forEach(other => {
                 if (other.owner !== troop.owner) {
                     let d = Math.hypot(other.x - troop.x, other.y - troop.y);
-                    if (d < minDistEnemy) { minDistEnemy = d; closestEnemyTroop = other; }
+                    if (d < minDistEnemy) { minDistEnemy = d; closestEnemy = other; }
                 }
             });
 
-            // Se houver tropa inimiga por perto (visão de agro), foca nela
-            if (closestEnemyTroop && minDistEnemy < 120) {
-                targetX = closestEnemyTroop.x;
-                targetY = closestEnemyTooth = closestEnemyTroop.y;
-                var currentDist = minDistEnemy;
+            let currentDist = 0;
+            if (closestEnemy && minDistEnemy < 120) {
+                targetX = closestEnemy.x;
+                targetY = closestEnemy.y;
+                currentDist = minDistEnemy;
             } else {
-                var currentDist = Math.hypot(targetX - troop.x, targetY - troop.y);
+                currentDist = Math.hypot(targetX - troop.x, targetY - troop.y);
             }
 
-            // 4. Atacar ou Correr
-            if (closestEnemyTroop && currentDist <= troop.range + closestEnemyTroop.size) {
-                closestEnemyTroop.hp -= troop.damage / 15;
-            } else if (!closestEnemyTroop && currentDist <= troop.range + 25) {
+            // 4. Executar ataque ou mover
+            if (closestEnemy && currentDist <= troop.range + closestEnemy.size) {
+                closestEnemy.hp -= troop.damage / 15;
+            } else if (!closestEnemy && currentDist <= troop.range + 25) {
                 primaryTarget.hp -= troop.damage / 15;
                 if (primaryTarget.hp <= 0) primaryTarget.alive = false;
             } else {
@@ -206,7 +201,6 @@ setInterval(() => {
 
         state.troops = state.troops.filter(t => t.hp > 0);
 
-        // Vitória se o Rei cair
         if (!state.towers.p1_king.alive) {
             io.to(lobbyId).emit('game_over', 'Jogador Vermelho (Cima)');
             delete lobbies[lobbyId];
@@ -220,4 +214,4 @@ setInterval(() => {
 }, 1000 / 30);
 
 const PORT = process.env.PORT || 10000;
-http.listen(PORT, () => console.log(`Rodando na porta ${PORT}`));
+http.listen(PORT, () => console.log(`Servidor Ativo`));
