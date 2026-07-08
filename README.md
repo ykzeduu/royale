@@ -65,7 +65,37 @@ git push -u origin main
 | Gigante 👊 | 5 | Tanque que só ataca torres |
 | Bárbaros 🪓 | 5 | 4 unidades médias |
 
+## Modos de jogo
+
+- **Normal**: cada jogador monta seu próprio baralho de 8 cartas (escolhidas entre as 16 disponíveis) antes de criar/entrar na sala.
+- **Escolha Rápida**: assim que os dois jogadores entram na sala, rola um "draft" ao vivo — 16 cartas são reveladas em 8 pares. A cada rodada um dos jogadores escolhe 1 das 2 cartas mostradas para o próprio baralho; a outra vai automaticamente para o baralho do adversário. Ao final, os dois baralhos de 8 cartas juntos somam as 16 cartas, sem repetição.
+
+## As 16 cartas
+
+| Carta | Custo | Estilo |
+|---|---|---|
+| Espírito de Gelo ❄️ | 1 | Explode uma vez, dano em área + desacelera quem for atingido |
+| Esqueletos 💀 | 1 | 3 unidades fracas e baratas |
+| Goblins 👺 | 2 | 4 unidades rápidas e frágeis |
+| Cavaleiro ⚔️ | 3 | Tanque corpo a corpo |
+| Arqueiras 🏹 | 3 | 2 unidades de longo alcance |
+| Guardas Reais 🛡️ | 3 | 3 unidades resistentes |
+| Flechas 🎯 | 3 | Feitiço de área grande, dano menor (bom contra enxames) |
+| Mosqueteira 🔫 | 4 | Longo alcance, dano alto |
+| Mini P.E.K.K.A 🗡️ | 4 | Dano corpo a corpo altíssimo |
+| Bola de Fogo 🔥 | 4 | Feitiço de área, dano alto |
+| Jaula de Goblin 🔒 | 4 | Construção-isca: quando destruída, solta um Goblin |
+| Dragão 🐉 | 4 | Voador, dano em área, só pode ser atingido por unidades com alcance à distância ou torres |
+| Hogrider 🐗 | 4 | Pula o rio direto (ignora a ponte), só ataca construções |
+| Gigante 👊 | 5 | Tanque que só ataca torres |
+| Bárbaros 🪓 | 5 | 4 unidades médias |
+| Bruxa 🧙 | 5 | Longo alcance + invoca esqueletos periodicamente |
+
 ## Novidades desta versão
+
+- **Lobby de baralho**: agora dá pra escolher entre 16 cartas e montar seu baralho de 8 antes de jogar (modo Normal), ou fazer um draft ao vivo com seu amigo (modo Escolha Rápida).
+- **8 cartas novas**: Espírito de Gelo, Goblins, Guardas Reais, Flechas, Jaula de Goblin, Dragão (voador), Hogrider (ignora a ponte) e Bruxa (invoca esqueletos).
+- **Alcance corrigido**: Arqueiras, Mosqueteira e Bruxa agora têm alcance menor que o das torres — antes conseguiam atacar de uma distância em que a torre não conseguia revidar; agora sempre rola troca de tiro justa.
 
 - **Contagem regressiva** de 5 segundos antes da partida começar (estilo lançamento de foguete).
 - **Prorrogação (morte súbita)**: se o placar de torres estiver empatado quando os 3 minutos acabarem, tem mais 60s de elixir em dobro — a primeira torre destruída nesse período vence na hora. Se ninguém destruir nada, quem tiver mais HP total nas torres vence; se ainda empatar, é empate mesmo.

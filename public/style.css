@@ -40,6 +40,49 @@ h2 { color: #ffd54f; }
 
 .divider { margin: 20px 0; color: #6b7fa3; }
 
+.mode-select { display: flex; gap: 10px; margin-bottom: 20px; width: 100%; max-width: 380px; }
+.mode-card {
+  flex: 1; background: rgba(255,255,255,0.06); border: 2px solid rgba(255,255,255,0.15);
+  border-radius: 12px; padding: 12px; cursor: pointer; text-align: left;
+  transition: border-color 0.15s, background 0.15s;
+}
+.mode-card.selected { border-color: #ffd54f; background: rgba(255,213,79,0.12); }
+.mode-title { font-weight: bold; color: #ffd54f; margin-bottom: 4px; }
+.mode-desc { font-size: 0.78em; color: #9db3d6; line-height: 1.3; }
+
+#deck-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+  width: 100%; max-width: 420px; margin: 10px 0 20px;
+}
+.deck-card {
+  aspect-ratio: 3/4; border-radius: 10px; border: 3px solid #2c3e50;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  color: #fff; font-size: 0.65em; font-weight: bold; text-align: center; padding: 2px;
+  cursor: pointer; position: relative; transition: transform 0.12s, box-shadow 0.12s;
+}
+.deck-card .icon { font-size: 1.6em; }
+.deck-card .cost {
+  position: absolute; top: -6px; left: -6px; background: #d500f9; color: #fff;
+  border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center;
+  font-size: 0.85em; border: 2px solid #fff;
+}
+.deck-card.picked { border-color: #4caf50; box-shadow: 0 0 10px #4caf50; transform: translateY(-4px); }
+.deck-actions { display: flex; gap: 10px; }
+
+.draft-turn { font-weight: bold; color: #ffd54f; min-height: 22px; }
+.draft-pair { display: flex; gap: 16px; margin: 14px 0; }
+.draft-card {
+  width: 110px; aspect-ratio: 3/4; border-radius: 12px; border: 3px solid #2c3e50;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  color: #fff; font-weight: bold; text-align: center; cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.draft-card .icon { font-size: 2.2em; margin-bottom: 6px; }
+.draft-card.pickable:hover { transform: translateY(-6px) scale(1.05); box-shadow: 0 8px 16px rgba(0,0,0,0.4), 0 0 0 2px #ffd54f; }
+.draft-card.disabled { opacity: 0.5; cursor: default; }
+.mini-deck { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; max-width: 380px; font-size: 1.6em; }
+.mini-deck span { background: rgba(255,255,255,0.08); border-radius: 8px; padding: 4px 6px; }
+
 .join-row { display: flex; gap: 10px; }
 #input-code {
   width: 130px; text-align: center; font-size: 1.2em; letter-spacing: 3px;

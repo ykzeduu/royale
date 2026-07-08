@@ -12,6 +12,17 @@
   <h1>⚔️ CLASH WEB</h1>
   <p class="subtitle">Duele com seu amigo em tempo real</p>
 
+  <div class="mode-select">
+    <div class="mode-card selected" data-mode="normal">
+      <div class="mode-title">Modo Normal</div>
+      <div class="mode-desc">Você monta seu baralho de 8 cartas antes de criar a sala.</div>
+    </div>
+    <div class="mode-card" data-mode="draft">
+      <div class="mode-title">Escolha Rápida</div>
+      <div class="mode-desc">16 cartas são divididas ao vivo entre você e seu amigo, alternando as escolhas.</div>
+    </div>
+  </div>
+
   <button id="btn-create" class="btn btn-primary">Criar Sala</button>
 
   <div class="divider">ou</div>
@@ -23,12 +34,34 @@
   <p id="home-error" class="error"></p>
 </div>
 
+<div id="screen-deckbuilder" class="screen">
+  <h2>Monte seu baralho</h2>
+  <p class="subtitle"><span id="deck-count">0</span>/8 cartas escolhidas</p>
+  <div id="deck-grid"></div>
+  <div class="deck-actions">
+    <button id="btn-random-deck" class="btn btn-secondary">Aleatório</button>
+    <button id="btn-confirm-deck" class="btn btn-primary" disabled>Confirmar</button>
+  </div>
+</div>
+
 <div id="screen-waiting" class="screen">
   <h2>Sala criada!</h2>
   <p>Envie este código para seu amigo:</p>
   <div class="room-code" id="room-code-display">----</div>
   <button id="btn-copy" class="btn btn-secondary">Copiar código</button>
   <p class="waiting-msg">Aguardando o adversário entrar<span class="dots"></span></p>
+</div>
+
+<div id="screen-draft" class="screen">
+  <h2>Escolha Rápida</h2>
+  <p id="draft-round-label">Rodada 1 de 8</p>
+  <p id="draft-turn-label" class="draft-turn"></p>
+  <div class="draft-pair">
+    <div class="draft-card" id="draft-card-a"></div>
+    <div class="draft-card" id="draft-card-b"></div>
+  </div>
+  <p class="subtitle">Seu baralho até agora:</p>
+  <div id="draft-my-deck" class="mini-deck"></div>
 </div>
 
 <div id="screen-game" class="screen">

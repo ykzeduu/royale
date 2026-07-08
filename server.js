@@ -7,6 +7,8 @@ const CARDS = require('./public/cards.js');
 const C = require('./public/constants.js');
 
 const MELEE_RANGE = 40; // acima disso, o ataque gera um projétil visual
+const ALL_CARD_KEYS = Object.keys(CARDS);
+const DRAFT_ROUNDS = 8;
 
 const app = express();
 const server = http.createServer(app);
@@ -25,13 +27,13 @@ function genCode() {
   return s;
 }
 
-function shuffledKeys() {
-  const keys = Object.keys(CARDS);
-  for (let i = keys.length - 1; i > 0; i--) {
+function shuffle(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    [keys[i], keys[j]] = [keys[j], keys[i]];
+    [a[i], a[j]] = [a[j], a[i]];
   }
-  return keys;
+  return a;
 }
 
 function clamp(v, min, max) {
@@ -42,8 +44,20 @@ function dist(a, b) {
   return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
-function newPlayerState() {
-  const shuffled = shuffledKeys(); // 8 cartas
+function isValidDeck(deck) {
+  if (!Array.isArray(deck) || deck.length !== 8) return false;
+  const set = new Set(deck);
+  if (set.size !== 8) return false;
+  return deck.every(k => ALL_CARD_KEYS.includes(k));
+}
+
+function randomDeck() {
+  return shuffle(ALL_CARD_KEYS).slice(0, 8);
+}
+
+function newPlayerState(deck) {
+  const fullDeck = isValidDeck(deck) ? deck : randomDeck();
+  const shuffled = shuffle(fullDeck); // 8 cartas
   const hand = shuffled.splice(0, 4);
   const next = shuffled.shift();
   const queue = shuffled; // restam 3
@@ -59,10 +73,15 @@ function newPlayerState() {
   };
 }
 
-function createRoom() {
+function createRoom(mode) {
   let code;
   do { code = genCode(); } while (rooms[code]);
-  const room = { code, sockets: [], state: null, interval: null, secTimer: null, cdTimer: null, started: false };
+  const room = {
+    code, mode: mode === 'draft' ? 'draft' : 'normal',
+    sockets: [], decks: [null, null],
+    state: null, interval: null, secTimer: null, cdTimer: null,
+    draft: null, started: false
+  };
   rooms[code] = room;
   return room;
 }
@@ -71,6 +90,7 @@ function destroyRoom(room) {
   if (room.interval) clearInterval(room.interval);
   if (room.secTimer) clearInterval(room.secTimer);
   if (room.cdTimer) clearInterval(room.cdTimer);
+  if (room.draft && room.draft.timer) clearInterval(room.draft.timer);
   delete rooms[room.code];
 }
 
@@ -103,6 +123,56 @@ function totalTowerHp(p) {
   return p.towers.king.hp + p.towers.left.hp + p.towers.right.hp;
 }
 
+// ---------- Modo Escolha Rápida (draft) ----------
+
+function startDraft(room) {
+  const pool = shuffle(ALL_CARD_KEYS); // 16 cartas
+  const pairs = [];
+  for (let i = 0; i < pool.length; i += 2) pairs.push([pool[i], pool[i + 1]]);
+
+  room.draft = {
+    pairs,
+    round: 0,
+    decks: [[], []]
+  };
+
+  sendDraftRound(room);
+}
+
+function sendDraftRound(room) {
+  const d = room.draft;
+  if (d.round >= DRAFT_ROUNDS) {
+    room.decks[0] = d.decks[0];
+    room.decks[1] = d.decks[1];
+    io.to(room.code).emit('draft_complete', { decks: room.decks });
+    startMatch(room);
+    return;
+  }
+  const chooser = d.round % 2; // alterna quem escolhe a cada rodada
+  const [cardA, cardB] = d.pairs[d.round];
+  io.to(room.code).emit('draft_round', {
+    round: d.round + 1,
+    total: DRAFT_ROUNDS,
+    chooser,
+    cardA, cardB,
+    decks: d.decks
+  });
+}
+
+function handleDraftPick(room, idx, cardKey) {
+  const d = room.draft;
+  if (!d) return;
+  const chooser = d.round % 2;
+  if (idx !== chooser) return; // não é a vez dele
+  const [cardA, cardB] = d.pairs[d.round];
+  if (cardKey !== cardA && cardKey !== cardB) return;
+  const other = cardKey === cardA ? cardB : cardA;
+  d.decks[idx].push(cardKey);
+  d.decks[1 - idx].push(other);
+  d.round++;
+  sendDraftRound(room);
+}
+
 // ---------- Ciclo de vida da partida ----------
 
 function startMatch(room) {
@@ -118,7 +188,7 @@ function startMatch(room) {
     crowns: null,
     troops: [],
     events: [],
-    players: [newPlayerState(), newPlayerState()]
+    players: [newPlayerState(room.decks[0]), newPlayerState(room.decks[1])]
   };
   room.started = true;
 
@@ -184,6 +254,48 @@ function beginSimulation(room) {
   }, 1000);
 }
 
+// ---------- Criação de tropas ----------
+
+function makeTroop(card, cardKey, owner, x, y, lane, bridgeX) {
+  return {
+    id: Math.random().toString(36).slice(2),
+    owner,
+    cardKey,
+    x: clamp(x, 10, C.ARENA_W - 10),
+    y: clamp(y, 10, C.ARENA_H - 10),
+    hp: card.hp,
+    maxHp: card.hp,
+    damage: card.damage,
+    range: card.range,
+    speed: card.speed,
+    attackSpeed: card.attackSpeed,
+    cooldown: 0,
+    radius: card.radius,
+    sight: card.sight || 0,
+    buildingOnly: card.target === 'buildings',
+    flying: !!card.flying,
+    canTargetAir: !!card.canTargetAir,
+    ignoreRiver: !!card.ignoreRiver,
+    splash: card.splash || 0,
+    kamikaze: !!card.kamikaze,
+    aoe: card.aoe || 0,
+    slowFactorOnHit: card.slowFactor || 0,
+    slowDurationOnHit: card.slowDuration || 0,
+    spawnOnDeath: card.spawnOnDeath || null,
+    spawnEvery: card.spawnEvery || 0,
+    spawnCooldown: card.spawnEvery || 0,
+    lane, bridgeX
+  };
+}
+
+function laneAndBridgeFor(x) {
+  const bridgeX = x < C.ARENA_W / 2 ? C.BRIDGES[0].x : C.BRIDGES[1].x;
+  const lane = x < C.ARENA_W / 2 ? 'left' : 'right';
+  return { lane, bridgeX };
+}
+
+// ---------- Simulação ----------
+
 function tick(state, dt) {
   if (state.finished) return;
 
@@ -201,7 +313,7 @@ function tick(state, dt) {
     }
   });
 
-  // torres atacando
+  // torres atacando (torres enxergam tudo, inclusive voadores)
   state.players.forEach((p, ownerIdx) => {
     const enemyIdx = 1 - ownerIdx;
     ['king', 'left', 'right'].forEach(key => {
@@ -224,10 +336,12 @@ function tick(state, dt) {
       }
     });
   });
-  state.troops = state.troops.filter(t => t.hp > 0);
 
-  // tropas
-  state.troops.forEach(t => updateTroop(t, state, dt));
+  const newTroops = [];
+  state.troops.forEach(t => updateTroop(t, state, dt, newTroops));
+  state.troops.push(...newTroops);
+
+  processDeaths(state);
   state.troops = state.troops.filter(t => t.hp > 0);
 
   // vitória imediata (torre do rei destruída)
@@ -245,7 +359,36 @@ function tick(state, dt) {
   }
 }
 
-function updateTroop(t, state, dt) {
+function processDeaths(state) {
+  state.troops.forEach(t => {
+    if (t.hp <= 0 && t.spawnOnDeath) {
+      const card = CARDS[t.spawnOnDeath];
+      if (!card) return;
+      const count = card.count || 1;
+      for (let i = 0; i < count; i++) {
+        const off = (i - (count - 1) / 2) * 18;
+        state.troops.push(makeTroop(card, t.spawnOnDeath, t.owner, t.x + off, t.y, t.lane, t.bridgeX));
+      }
+      t.spawnOnDeath = null; // evita spawnar de novo
+    }
+  });
+}
+
+function updateTroop(t, state, dt, newTroops) {
+  // invocação periódica (ex: Bruxa invocando esqueletos)
+  if (t.spawnEvery && t.hp > 0) {
+    t.spawnCooldown -= dt * 1000;
+    if (t.spawnCooldown <= 0) {
+      t.spawnCooldown = t.spawnEvery;
+      const skelCard = CARDS.skeletons;
+      newTroops.push(makeTroop(
+        { ...skelCard, count: 1 }, 'skeletons', t.owner,
+        t.x + (Math.random() - 0.5) * 20, t.y + (Math.random() - 0.5) * 10,
+        t.lane, t.bridgeX
+      ));
+    }
+  }
+
   const enemyIdx = 1 - t.owner;
   const enemyPlayer = state.players[enemyIdx];
 
@@ -256,6 +399,7 @@ function updateTroop(t, state, dt) {
     const side = t.y < C.RIVER_Y ? 'top' : 'bottom';
     state.troops.forEach(o => {
       if (o.owner === t.owner || o.hp <= 0) return;
+      if (o.flying && !t.canTargetAir) return;
       const oside = o.y < C.RIVER_Y ? 'top' : 'bottom';
       if (oside !== side) return;
       const d = dist(t, o);
@@ -280,21 +424,50 @@ function updateTroop(t, state, dt) {
 
   if (d <= effRange) {
     if (t.cooldown <= 0) {
-      applyDamage(target, t.damage, state);
-      t.cooldown = t.attackSpeed;
-      if (t.range > MELEE_RANGE) {
-        state.events.push({ type: 'shot', x1: t.x, y1: t.y, x2: target.x, y2: target.y, owner: t.owner, fromId: t.id });
-      } else {
+      if (t.kamikaze) {
+        // explode uma vez: dano em área + lentidão, depois morre
+        state.troops.forEach(o => {
+          if (o.owner !== t.owner && o.hp > 0 && dist(t, o) <= t.aoe) {
+            if (o.flying && !t.canTargetAir) return;
+            o.hp -= t.damage;
+            if (t.slowFactorOnHit) {
+              o.slowUntil = Date.now() + t.slowDurationOnHit;
+              o.slowFactor = t.slowFactorOnHit;
+            }
+          }
+        });
         state.events.push({ type: 'melee', x: t.x, y: t.y, owner: t.owner, fromId: t.id });
+        t.hp = 0;
+      } else {
+        applyDamage(target, t.damage, state);
+        if (t.splash) {
+          state.troops.forEach(o => {
+            if (o.owner !== t.owner && o.hp > 0 && !(target.type === 'troop' && o === target.ref) && dist(target, o) <= t.splash) {
+              if (o.flying && !t.canTargetAir) return;
+              o.hp -= t.damage;
+            }
+          });
+        }
+        t.cooldown = t.attackSpeed;
+        if (t.range > MELEE_RANGE) {
+          state.events.push({ type: 'shot', x1: t.x, y1: t.y, x2: target.x, y2: target.y, owner: t.owner, fromId: t.id });
+        } else {
+          state.events.push({ type: 'melee', x: t.x, y: t.y, owner: t.owner, fromId: t.id });
+        }
       }
     }
     return;
   }
 
-  const moveTo = target.type === 'troop' ? target : nextWaypoint(t, target);
+  const moveTo = target.type === 'troop'
+    ? target
+    : ((t.flying || t.ignoreRiver) ? { x: target.x, y: target.y } : nextWaypoint(t, target));
+
   const dx = moveTo.x - t.x, dy = moveTo.y - t.y;
   const dd = Math.hypot(dx, dy) || 1;
-  const step = t.speed * dt * C.TROOP_SPEED_MULTIPLIER;
+  let spd = t.speed;
+  if (t.slowUntil && Date.now() < t.slowUntil) spd *= t.slowFactor;
+  const step = spd * dt * C.TROOP_SPEED_MULTIPLIER;
   const m = Math.min(step, dd);
   t.x += (dx / dd) * m;
   t.y += (dy / dd) * m;
@@ -349,7 +522,7 @@ function handleDeploy(room, idx, cardKey, x, y) {
   if (card.spell) {
     state.events.push({ type: 'spell', cardKey, x, y, owner: idx });
     state.troops.forEach(t => {
-      if (t.owner !== idx && dist({ x, y }, t) <= card.radius) t.hp -= card.damage;
+      if (t.owner !== idx && t.hp > 0 && dist({ x, y }, t) <= card.radius) t.hp -= card.damage;
     });
     state.players.forEach((p, pi) => {
       if (pi === idx) return;
@@ -366,29 +539,10 @@ function handleDeploy(room, idx, cardKey, x, y) {
     state.troops = state.troops.filter(t => t.hp > 0);
   } else {
     const count = card.count || 1;
-    const bridgeX = x < C.ARENA_W / 2 ? C.BRIDGES[0].x : C.BRIDGES[1].x;
-    const lane = x < C.ARENA_W / 2 ? 'left' : 'right';
+    const { lane, bridgeX } = laneAndBridgeFor(x);
     for (let i = 0; i < count; i++) {
       const off = card.spread ? (Math.random() - 0.5) * card.spread : (i - (count - 1) / 2) * 18;
-      state.troops.push({
-        id: Math.random().toString(36).slice(2),
-        owner: idx,
-        cardKey,
-        x: clamp(x + off, 10, C.ARENA_W - 10),
-        y,
-        hp: card.hp,
-        maxHp: card.hp,
-        damage: card.damage,
-        range: card.range,
-        speed: card.speed,
-        attackSpeed: card.attackSpeed,
-        cooldown: 0,
-        radius: card.radius,
-        sight: card.sight || 0,
-        buildingOnly: card.target === 'buildings',
-        lane,
-        bridgeX
-      });
+      state.troops.push(makeTroop(card, cardKey, idx, x + off, y, lane, bridgeX));
     }
   }
 
@@ -401,17 +555,26 @@ function handleDeploy(room, idx, cardKey, x, y) {
 // ---------- Socket.io ----------
 
 io.on('connection', socket => {
-  socket.on('create_room', () => {
-    const room = createRoom();
+  socket.on('check_room', code => {
+    code = (code || '').toUpperCase().trim();
+    const room = rooms[code];
+    if (!room) return socket.emit('room_check_result', { ok: false, error: 'Sala não encontrada.' });
+    if (room.sockets.length >= 2) return socket.emit('room_check_result', { ok: false, error: 'Sala cheia.' });
+    socket.emit('room_check_result', { ok: true, code, mode: room.mode });
+  });
+
+  socket.on('create_room', ({ mode, deck } = {}) => {
+    const room = createRoom(mode);
     room.sockets.push(socket.id);
     socket.join(room.code);
     socket.data.room = room.code;
     socket.data.idx = 0;
-    socket.emit('room_created', { code: room.code });
+    if (room.mode === 'normal') room.decks[0] = isValidDeck(deck) ? deck : randomDeck();
+    socket.emit('room_created', { code: room.code, mode: room.mode });
     socket.emit('your_index', 0);
   });
 
-  socket.on('join_room', code => {
+  socket.on('join_room', ({ code, deck } = {}) => {
     code = (code || '').toUpperCase().trim();
     const room = rooms[code];
     if (!room) return socket.emit('join_error', 'Sala não encontrada.');
@@ -421,8 +584,21 @@ io.on('connection', socket => {
     socket.data.room = room.code;
     socket.data.idx = 1;
     socket.emit('your_index', 1);
-    io.to(room.code).emit('room_ready', { code: room.code });
-    startMatch(room);
+
+    if (room.mode === 'normal') {
+      room.decks[1] = isValidDeck(deck) ? deck : randomDeck();
+      io.to(room.code).emit('room_ready', { code: room.code, mode: room.mode });
+      startMatch(room);
+    } else {
+      io.to(room.code).emit('room_ready', { code: room.code, mode: room.mode });
+      startDraft(room);
+    }
+  });
+
+  socket.on('draft_pick', ({ cardKey }) => {
+    const room = rooms[socket.data.room];
+    if (!room) return;
+    handleDraftPick(room, socket.data.idx, cardKey);
   });
 
   socket.on('deploy', ({ cardKey, x, y }) => {

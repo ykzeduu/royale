@@ -11,25 +11,65 @@ let effects = [];       // efeitos visuais temporários (projéteis, feitiços)
 let attackFlash = {};   // id da tropa -> timestamp do último ataque (para o "pulo" de ataque)
 let rafId = null;
 
+let selectedMode = 'normal';
+let pendingDeckAction = null; // {action:'create'} ou {action:'join', code}
+let myDeckSelection = [];
+
 // ---------- Telas ----------
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
 }
 
-// ---------- Home ----------
+function shuffleClient(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// ---------- Home: seleção de modo ----------
+document.querySelectorAll('.mode-card').forEach(el => {
+  el.addEventListener('click', () => {
+    document.querySelectorAll('.mode-card').forEach(m => m.classList.remove('selected'));
+    el.classList.add('selected');
+    selectedMode = el.dataset.mode;
+  });
+});
+
 document.getElementById('btn-create').addEventListener('click', () => {
-  socket.emit('create_room');
+  if (selectedMode === 'normal') {
+    pendingDeckAction = { action: 'create' };
+    openDeckBuilder();
+  } else {
+    socket.emit('create_room', { mode: 'draft' });
+  }
 });
 
 document.getElementById('btn-join').addEventListener('click', () => {
-  const code = document.getElementById('input-code').value;
+  const code = document.getElementById('input-code').value.trim();
   if (!code) return;
-  socket.emit('join_room', code);
+  document.getElementById('home-error').textContent = '';
+  socket.emit('check_room', code);
 });
 
 document.getElementById('input-code').addEventListener('keydown', e => {
   if (e.key === 'Enter') document.getElementById('btn-join').click();
+});
+
+socket.on('room_check_result', res => {
+  if (!res.ok) {
+    document.getElementById('home-error').textContent = res.error;
+    return;
+  }
+  if (res.mode === 'normal') {
+    pendingDeckAction = { action: 'join', code: res.code };
+    openDeckBuilder();
+  } else {
+    socket.emit('join_room', { code: res.code });
+  }
 });
 
 document.getElementById('btn-copy').addEventListener('click', () => {
@@ -44,6 +84,93 @@ document.getElementById('btn-copy').addEventListener('click', () => {
 document.getElementById('btn-replay').addEventListener('click', () => {
   location.reload();
 });
+
+// ---------- Montagem de baralho (modo normal) ----------
+function openDeckBuilder() {
+  myDeckSelection = [];
+  buildDeckGrid();
+  updateDeckCounter();
+  showScreen('screen-deckbuilder');
+}
+
+function buildDeckGrid() {
+  const grid = document.getElementById('deck-grid');
+  grid.innerHTML = '';
+  Object.keys(CARDS).forEach(key => {
+    const card = CARDS[key];
+    const el = document.createElement('div');
+    el.className = 'deck-card';
+    el.dataset.key = key;
+    el.style.background = card.color;
+    el.innerHTML = `<div class="cost">${card.cost}</div><div class="icon">${card.icon}</div><div>${card.name}</div>`;
+    el.addEventListener('click', () => {
+      const i = myDeckSelection.indexOf(key);
+      if (i >= 0) {
+        myDeckSelection.splice(i, 1);
+        el.classList.remove('picked');
+      } else {
+        if (myDeckSelection.length >= 8) return;
+        myDeckSelection.push(key);
+        el.classList.add('picked');
+      }
+      updateDeckCounter();
+    });
+    grid.appendChild(el);
+  });
+}
+
+function updateDeckCounter() {
+  document.getElementById('deck-count').textContent = myDeckSelection.length;
+  document.getElementById('btn-confirm-deck').disabled = myDeckSelection.length !== 8;
+}
+
+document.getElementById('btn-random-deck').addEventListener('click', () => {
+  myDeckSelection = shuffleClient(Object.keys(CARDS)).slice(0, 8);
+  document.querySelectorAll('#deck-grid .deck-card').forEach(el => {
+    el.classList.toggle('picked', myDeckSelection.includes(el.dataset.key));
+  });
+  updateDeckCounter();
+});
+
+document.getElementById('btn-confirm-deck').addEventListener('click', () => {
+  if (myDeckSelection.length !== 8 || !pendingDeckAction) return;
+  if (pendingDeckAction.action === 'create') {
+    socket.emit('create_room', { mode: 'normal', deck: myDeckSelection });
+  } else {
+    socket.emit('join_room', { code: pendingDeckAction.code, deck: myDeckSelection });
+  }
+});
+
+// ---------- Escolha Rápida (draft) ----------
+socket.on('draft_round', data => {
+  showScreen('screen-draft');
+  document.getElementById('draft-round-label').textContent = `Rodada ${data.round} de ${data.total}`;
+  const isMyTurn = data.chooser === myIdx;
+  document.getElementById('draft-turn-label').textContent = isMyTurn ? 'Sua vez de escolher!' : 'Aguardando escolha do adversário...';
+  renderDraftCard('draft-card-a', data.cardA, isMyTurn);
+  renderDraftCard('draft-card-b', data.cardB, isMyTurn);
+  renderMiniDeck(data.decks[myIdx] || []);
+});
+
+function renderDraftCard(elId, cardKey, pickable) {
+  const el = document.getElementById(elId);
+  const card = CARDS[cardKey];
+  el.style.background = card.color;
+  el.innerHTML = `<div class="icon">${card.icon}</div><div>${card.name}</div>`;
+  el.classList.toggle('pickable', pickable);
+  el.classList.toggle('disabled', !pickable);
+  el.onclick = pickable ? () => socket.emit('draft_pick', { cardKey }) : null;
+}
+
+function renderMiniDeck(deckArr) {
+  const el = document.getElementById('draft-my-deck');
+  el.innerHTML = '';
+  deckArr.forEach(key => {
+    const span = document.createElement('span');
+    span.textContent = CARDS[key].icon;
+    el.appendChild(span);
+  });
+}
 
 // ---------- Socket eventos ----------
 socket.on('your_index', idx => { myIdx = idx; });
@@ -79,7 +206,7 @@ socket.on('opponent_left', () => {
   stopRenderLoop();
   document.getElementById('end-title').textContent = 'Seu adversário saiu';
   document.getElementById('end-subtitle').textContent = 'A partida foi encerrada.';
-  document.querySelector('#screen-end .stars-row').style.display = 'none';
+  document.querySelectorAll('#screen-end .stars-row').forEach(el => el.style.display = 'none');
   showScreen('screen-end');
 });
 
@@ -101,6 +228,7 @@ function onMatchEnd(state) {
   }
   document.getElementById('end-title').textContent = title;
   document.getElementById('end-subtitle').textContent = subtitle;
+  document.querySelectorAll('#screen-end .stars-row').forEach(el => el.style.display = '');
 
   const crowns = state.crowns || [0, 0];
   renderStars('end-stars-me', crowns[myIdx]);
@@ -407,11 +535,20 @@ function drawTroop(t) {
   }
 
   ctx.save();
-  ctx.translate(p.x, p.y + bob);
-  ctx.beginPath();
-  ctx.ellipse(0, t.radius * 0.9, t.radius * 0.8, t.radius * 0.3, 0, 0, Math.PI * 2);
-  ctx.fillStyle = 'rgba(0,0,0,0.25)';
-  ctx.fill();
+  ctx.translate(p.x, p.y + bob + (t.flying ? -14 : 0));
+
+  if (t.flying) {
+    // sombra projetada no chão para dar noção de altura
+    ctx.beginPath();
+    ctx.ellipse(0, t.radius + 14, t.radius * 0.7, t.radius * 0.25, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fill();
+  } else {
+    ctx.beginPath();
+    ctx.ellipse(0, t.radius * 0.9, t.radius * 0.8, t.radius * 0.3, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.fill();
+  }
 
   ctx.scale(scale, scale);
   const base = t.owner === myIdx ? (card.color || '#2196f3') : '#e53935';
@@ -433,10 +570,11 @@ function drawTroop(t) {
 
   const pct = Math.max(0, t.hp / t.maxHp);
   const barW = t.radius * 2;
+  const barY = p.y + bob + (t.flying ? -14 : 0) - t.radius - 8;
   ctx.fillStyle = '#000';
-  ctx.fillRect(p.x - barW / 2, p.y + bob - t.radius - 8, barW, 4);
+  ctx.fillRect(p.x - barW / 2, barY, barW, 4);
   ctx.fillStyle = pct > 0.4 ? '#4caf50' : '#f44336';
-  ctx.fillRect(p.x - barW / 2, p.y + bob - t.radius - 8, barW * pct, 4);
+  ctx.fillRect(p.x - barW / 2, barY, barW * pct, 4);
 }
 
 function drawShotEffect(e, p) {
