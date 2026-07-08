@@ -33,12 +33,19 @@
 
 <div id="screen-game" class="screen">
   <div id="hud-top">
+    <div id="crown-track">
+      <span id="crown-me">0</span><span class="crown-icon">🏆</span><span id="crown-opp">0</span>
+    </div>
     <div id="timer">3:00</div>
     <div id="double-elixir-badge" class="hidden">ELIXIR x2</div>
   </div>
 
   <div id="canvas-wrap">
     <canvas id="arena" width="360" height="600"></canvas>
+    <div id="countdown-overlay" class="hidden">
+      <span id="countdown-text"></span>
+    </div>
+    <div id="overtime-badge" class="hidden">PRORROGAÇÃO — MORTE SÚBITA</div>
   </div>
 
   <div id="hud-bottom">
@@ -53,6 +60,14 @@
 <div id="screen-end" class="screen">
   <h1 id="end-title">Vitória!</h1>
   <p id="end-subtitle"></p>
+  <div class="stars-row">
+    <p class="stars-label">Torres que você destruiu</p>
+    <div id="end-stars-me" class="stars"></div>
+  </div>
+  <div class="stars-row">
+    <p class="stars-label">Torres que o adversário destruiu</p>
+    <div id="end-stars-opp" class="stars"></div>
+  </div>
   <button id="btn-replay" class="btn btn-primary">Voltar ao início</button>
 </div>
 

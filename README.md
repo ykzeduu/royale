@@ -65,6 +65,17 @@ git push -u origin main
 | Gigante 👊 | 5 | Tanque que só ataca torres |
 | Bárbaros 🪓 | 5 | 4 unidades médias |
 
+## Novidades desta versão
+
+- **Contagem regressiva** de 5 segundos antes da partida começar (estilo lançamento de foguete).
+- **Prorrogação (morte súbita)**: se o placar de torres estiver empatado quando os 3 minutos acabarem, tem mais 60s de elixir em dobro — a primeira torre destruída nesse período vence na hora. Se ninguém destruir nada, quem tiver mais HP total nas torres vence; se ainda empatar, é empate mesmo.
+- **Projéteis visuais**: flechas/tiros de Arqueiras, Mosqueteira e das torres agora "viajam" até o alvo.
+- **Bola de Fogo caindo do céu**: o feitiço agora cai visualmente até o ponto onde foi jogado e explode lá.
+- **Tropas com animação**: balanço leve ao andar/ficar paradas e um "pulo" no momento do ataque — tudo gerado por código (sem sprites prontos).
+- **Texturas processuais**: grama, madeira das pontes e água com ondulação, todas desenhadas via canvas.
+- **Velocidade das tropas reduzida em ~10%** para um ritmo mais tranquilo.
+- **Tela de vitória com estrelas**: mostra quantas torres você destruiu (0 a 3 estrelas) e quantas o adversário destruiu.
+
 ## Personalizando / expandindo
 
 - Novas cartas: edite `public/cards.js` (o mesmo arquivo é usado pelo servidor e pelo cliente).

@@ -18,6 +18,9 @@
     BRIDGES: [{ x: 90 }, { x: 270 }],
     MATCH_TIME: 180,       // segundos
     DOUBLE_ELIXIR_AT: 60,  // segundos restantes para ativar elixir duplo
+    OVERTIME_TIME: 60,     // segundos de prorrogação (morte súbita)
+    TROOP_SPEED_MULTIPLIER: 0.9, // ~10% mais lento
+    COUNTDOWN_SECONDS: 5,
     ELIXIR_MAX: 10,
     ELIXIR_START: 5,
     ELIXIR_REGEN_MS: 2000,      // 1 elixir a cada 2s (normal)
