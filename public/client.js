@@ -40,11 +40,11 @@ document.querySelectorAll('.mode-card').forEach(el => {
 });
 
 document.getElementById('btn-create').addEventListener('click', () => {
-  if (selectedMode === 'normal') {
-    pendingDeckAction = { action: 'create' };
-    openDeckBuilder();
-  } else {
+  if (selectedMode === 'draft') {
     socket.emit('create_room', { mode: 'draft' });
+  } else {
+    pendingDeckAction = { action: 'create', mode: selectedMode };
+    openDeckBuilder();
   }
 });
 
@@ -64,11 +64,11 @@ socket.on('room_check_result', res => {
     document.getElementById('home-error').textContent = res.error;
     return;
   }
-  if (res.mode === 'normal') {
+  if (res.mode === 'draft') {
+    socket.emit('join_room', { code: res.code });
+  } else {
     pendingDeckAction = { action: 'join', code: res.code };
     openDeckBuilder();
-  } else {
-    socket.emit('join_room', { code: res.code });
   }
 });
 
@@ -136,7 +136,7 @@ document.getElementById('btn-random-deck').addEventListener('click', () => {
 document.getElementById('btn-confirm-deck').addEventListener('click', () => {
   if (myDeckSelection.length !== 8 || !pendingDeckAction) return;
   if (pendingDeckAction.action === 'create') {
-    socket.emit('create_room', { mode: 'normal', deck: myDeckSelection });
+    socket.emit('create_room', { mode: pendingDeckAction.mode || 'normal', deck: myDeckSelection });
   } else {
     socket.emit('join_room', { code: pendingDeckAction.code, deck: myDeckSelection });
   }
@@ -187,6 +187,26 @@ socket.on('join_error', msg => {
 });
 
 socket.on('room_ready', () => {});
+
+socket.on('evolution_offer', data => {
+  if (data.playerIdx !== myIdx) return;
+  const overlay = document.getElementById('evolution-overlay');
+  const card = CARDS[data.cardKey];
+  document.getElementById('evo-card-name').textContent = `${card.icon} ${card.name}`;
+  const optsDiv = document.getElementById('evo-options');
+  optsDiv.innerHTML = '';
+  data.options.forEach(opt => {
+    const btn = document.createElement('div');
+    btn.className = 'evo-option';
+    btn.textContent = opt.label;
+    btn.addEventListener('click', () => {
+      socket.emit('evolution_pick', { buffId: opt.id });
+      overlay.classList.add('hidden');
+    });
+    optsDiv.appendChild(btn);
+  });
+  overlay.classList.remove('hidden');
+});
 
 socket.on('match_start', state => {
   latestState = state;
@@ -519,6 +539,13 @@ function drawTowerShape(x, y, hp, maxHp, radius, isKing) {
     ctx.fillRect(x - barW / 2, y - radius - 10, barW, 5);
     ctx.fillStyle = pct > 0.4 ? '#4caf50' : '#f44336';
     ctx.fillRect(x - barW / 2, y - radius - 10, barW * pct, 5);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 9px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.shadowColor = '#000'; ctx.shadowBlur = 2;
+    ctx.fillText(Math.ceil(hp), x + barW / 2 + 4, y - radius - 7);
+    ctx.shadowBlur = 0;
   }
 }
 
@@ -581,13 +608,22 @@ function drawTroop(t) {
   ctx.fillText(card.icon, 0, 1);
   ctx.restore();
 
-  const pct = Math.max(0, t.hp / t.maxHp);
+  const totalHp = t.hp + (t.shield || 0);
+  const totalMax = t.maxHp + (t.maxShield || 0);
+  const pct = Math.max(0, totalHp / totalMax);
   const barW = t.radius * 2;
   const barY = p.y + bob + (t.flying ? -14 : 0) - jumpLift - t.radius - 8;
   ctx.fillStyle = '#000';
   ctx.fillRect(p.x - barW / 2, barY, barW, 4);
-  ctx.fillStyle = pct > 0.4 ? '#4caf50' : '#f44336';
+  ctx.fillStyle = (t.shield > 0) ? '#4fc3f7' : (pct > 0.4 ? '#4caf50' : '#f44336');
   ctx.fillRect(p.x - barW / 2, barY, barW * pct, 4);
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 8px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.shadowColor = '#000'; ctx.shadowBlur = 2;
+  ctx.fillText(Math.ceil(totalHp), p.x + barW / 2 + 3, barY + 2);
+  ctx.shadowBlur = 0;
 }
 
 function drawShotEffect(e, p) {

@@ -21,6 +21,14 @@
       <div class="mode-title">Escolha Rápida</div>
       <div class="mode-desc">16 cartas são divididas ao vivo entre você e seu amigo, alternando as escolhas.</div>
     </div>
+    <div class="mode-card" data-mode="turbo">
+      <div class="mode-title">Elixir Turbo</div>
+      <div class="mode-desc">O elixir carrega 7x mais rápido. Partida bem mais agressiva.</div>
+    </div>
+    <div class="mode-card" data-mode="evolution">
+      <div class="mode-title">Evolução</div>
+      <div class="mode-desc">A cada 1min10s você escolhe um upgrade para uma das suas cartas (até 4 por partida).</div>
+    </div>
   </div>
 
   <button id="btn-create" class="btn btn-primary">Criar Sala</button>
@@ -79,6 +87,13 @@
       <span id="countdown-text"></span>
     </div>
     <div id="overtime-badge" class="hidden">PRORROGAÇÃO — MORTE SÚBITA</div>
+    <div id="evolution-overlay" class="hidden">
+      <div class="evo-box">
+        <div class="evo-title">Evolução disponível!</div>
+        <div id="evo-card-name" class="evo-card-name"></div>
+        <div id="evo-options" class="evo-options"></div>
+      </div>
+    </div>
   </div>
 
   <div id="hud-bottom">

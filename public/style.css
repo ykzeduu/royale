@@ -40,7 +40,7 @@ h2 { color: #ffd54f; }
 
 .divider { margin: 20px 0; color: #6b7fa3; }
 
-.mode-select { display: flex; gap: 10px; margin-bottom: 20px; width: 100%; max-width: 380px; }
+.mode-select { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; width: 100%; max-width: 420px; }
 .mode-card {
   flex: 1; background: rgba(255,255,255,0.06); border: 2px solid rgba(255,255,255,0.15);
   border-radius: 12px; padding: 12px; cursor: pointer; text-align: left;
@@ -140,6 +140,25 @@ h2 { color: #ffd54f; }
 }
 #overtime-badge.hidden { display: none; }
 
+#evolution-overlay {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.6); border-radius: 10px; z-index: 20; padding: 12px;
+}
+#evolution-overlay.hidden { display: none; }
+.evo-box {
+  background: #1a2a4a; border: 2px solid #ffd54f; border-radius: 14px; padding: 16px;
+  text-align: center; max-width: 300px;
+}
+.evo-title { color: #ffd54f; font-weight: bold; font-size: 1.1em; margin-bottom: 6px; }
+.evo-card-name { color: #9db3d6; margin-bottom: 12px; font-size: 0.9em; }
+.evo-options { display: flex; flex-direction: column; gap: 8px; }
+.evo-option {
+  background: rgba(255,255,255,0.08); border: 2px solid #4fc3f7; border-radius: 10px;
+  padding: 10px; cursor: pointer; font-size: 0.85em; font-weight: bold; color: #fff;
+  transition: transform 0.12s, background 0.12s;
+}
+.evo-option:hover { transform: scale(1.03); background: rgba(79,195,247,0.2); }
+
 #crown-track {
   display: flex; align-items: center; gap: 6px; background: rgba(0,0,0,0.35);
   padding: 4px 12px; border-radius: 10px; font-weight: bold; font-size: 1.1em;
@@ -172,9 +191,9 @@ h2 { color: #ffd54f; }
 }
 .card .icon { font-size: 1.8em; transition: transform 0.15s ease; }
 .card .cost {
-  position: absolute; top: -8px; left: -8px; background: #d500f9; color: #fff;
-  border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;
-  font-size: 0.9em; border: 2px solid #fff;
+  position: absolute; top: -12px; left: -12px; background: #d500f9; color: #fff;
+  border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+  font-size: 1.25em; font-weight: 900; border: 3px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.4);
 }
 
 /* animação ao passar o mouse/dedo por cima */

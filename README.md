@@ -91,6 +91,22 @@ git push -u origin main
 | Bárbaros 🪓 | 5 | 4 unidades médias |
 | Bruxa 🧙 | 5 | Longo alcance + invoca 3 esqueletos periodicamente |
 
+## Modos de jogo
+
+- **Normal**: cada jogador monta seu próprio baralho de 8 cartas antes de criar/entrar na sala.
+- **Escolha Rápida**: draft ao vivo — 16 cartas em 8 pares, alternando quem escolhe. A carta não escolhida vai pro adversário.
+- **Elixir Turbo**: elixir carrega 7x mais rápido. Partida bem mais agressiva.
+- **Evolução**: a cada 1min10s de jogo, cada jogador recebe uma escolha entre 2 upgrades para uma carta aleatória do próprio baralho (no máximo 4 escolhas por partida). Toda carta tem pelo menos 3 upgrades possíveis.
+
+## Balanceamento
+
+Os números das 16 cartas foram ajustados para bater com os valores de referência do jogo original (vida, dano e velocidade de ataque convertidos para a escala do nosso mecanismo). Principais mecânicas novas:
+
+- **Escudo dos Guardas Reais**: eles têm uma "vida de escudo" que absorve dano primeiro; só depois disso a vida real é afetada — sobrevivem a um feitiço grande, mas morrem fácil na sequência.
+- **Dano reduzido contra torres**: Bola de Fogo e Flechas causam dano cheio em tropas mas bem menos nas torres (`towerDamage`), igual no jogo original.
+- **Torre do rei**: só acorda quando toma dano diretamente (regra oficial) — mas agora tem alcance bem maior (chega perto da linha das torres das princesas, sem alcançar a ponte).
+- **Jaula de Goblin** tem um tempo de vida de 20s: se não for destruída antes, ela expira e libera o Goblin Brutamontes de qualquer forma.
+
 ## Novidades desta versão
 
 - **Torre do rei corrigida**: agora ela "acorda" assim que qualquer torre do seu lado toma dano (antes só acordava se ela mesma fosse atingida, o que a deixava passiva demais).

@@ -26,8 +26,8 @@
     ELIXIR_REGEN_MS: 2000,      // 1 elixir a cada 2s (normal)
     ELIXIR_REGEN_MS_FAST: 1000, // 1 elixir a cada 1s (elixir duplo)
     TOWERS: {
-      king: { hp: 2400, damage: 110, range: 140, attackSpeed: 1000, radius: 30 },
-      princess: { hp: 1400, damage: 90, range: 155, attackSpeed: 900, radius: 24 }
+      king: { hp: 2600, damage: 125, range: 220, attackSpeed: 900, radius: 30 },
+      princess: { hp: 1500, damage: 100, range: 155, attackSpeed: 800, radius: 24 }
     },
     // Posições em coordenadas de mundo. p0 fica embaixo, p1 fica em cima.
     TOWER_POSITIONS: {
