@@ -17,11 +17,6 @@
       attackSpeed: 1000, speed: 70, count: 2, radius: 12, spread: 24,
       color: '#8bc34a', icon: '🏹', target: 'ground', sight: 150, canTargetAir: true
     },
-    giant: {
-      name: 'Gigante', cost: 5, hp: 2000, damage: 120, range: 30,
-      attackSpeed: 1500, speed: 40, count: 1, radius: 22,
-      color: '#e67e22', icon: '👊', target: 'buildings', sight: 0
-    },
     musketeer: {
       name: 'Mosqueteira', cost: 4, hp: 250, damage: 100, range: 135,
       attackSpeed: 1100, speed: 60, count: 1, radius: 12,
@@ -52,10 +47,10 @@
       name: 'Jaula de Goblin', cost: 4, hp: 400, damage: 0, range: 0,
       attackSpeed: 1000, speed: 0, count: 1, radius: 20,
       color: '#607d8b', icon: '🔒', target: 'buildings', sight: 0,
-      spawnOnDeath: 'goblins'
+      spawnOnDeath: 'goblin_brawler'
     },
     goblins: {
-      name: 'Goblins', cost: 2, hp: 90, damage: 55, range: 20,
+      name: 'Goblins', cost: 2, hp: 190, damage: 55, range: 20,
       attackSpeed: 700, speed: 90, count: 4, radius: 10, spread: 22,
       color: '#33691e', icon: '👺', target: 'ground', sight: 110
     },
@@ -63,7 +58,7 @@
       name: 'Dragão', cost: 4, hp: 1000, damage: 130, range: 110,
       attackSpeed: 1300, speed: 50, count: 1, radius: 18,
       color: '#8e24aa', icon: '🐉', target: 'ground', sight: 160,
-      flying: true, canTargetAir: true, splash: 45
+      flying: true, canTargetAir: true, splash: 45, breathFx: true
     },
     royal_guards: {
       name: 'Guardas Reais', cost: 3, hp: 220, damage: 90, range: 25,
@@ -71,7 +66,7 @@
       color: '#3949ab', icon: '🛡️', target: 'ground', sight: 110
     },
     hog_rider: {
-      name: 'Hogrider', cost: 4, hp: 800, damage: 150, range: 30,
+      name: 'Corredor', cost: 4, hp: 800, damage: 150, range: 30,
       attackSpeed: 1500, speed: 100, count: 1, radius: 15,
       color: '#a1887f', icon: '🐗', target: 'buildings', sight: 0,
       ignoreRiver: true
@@ -80,17 +75,30 @@
       name: 'Bruxa', cost: 5, hp: 350, damage: 90, range: 115,
       attackSpeed: 1100, speed: 55, count: 1, radius: 14,
       color: '#4a148c', icon: '🧙', target: 'ground', sight: 150,
-      canTargetAir: true, spawnEvery: 3500
+      canTargetAir: true, spawnEvery: 4500, spawnCount: 3
     },
-    ice_spirit: {
-      name: 'Espírito de Gelo', cost: 1, hp: 90, damage: 45, range: 20,
-      attackSpeed: 1000, speed: 110, count: 1, radius: 9,
-      color: '#4fc3f7', icon: '❄️', target: 'ground', sight: 100,
-      canTargetAir: true, kamikaze: true, aoe: 40, slowFactor: 0.5, slowDuration: 2500
+    minions: {
+      name: 'Servos Voadores', cost: 3, hp: 90, damage: 50, range: 110,
+      attackSpeed: 1000, speed: 80, count: 3, radius: 10, spread: 20,
+      color: '#00acc1', icon: '🧚', target: 'ground', sight: 130,
+      flying: true, canTargetAir: true
     },
     arrows: {
       name: 'Flechas', cost: 3, spell: true, damage: 170, radius: 90,
       color: '#7cb342', icon: '🎯'
+    },
+    dragon_hunters: {
+      name: 'Caçadores de Dragão', cost: 4, hp: 200, damage: 90, range: 130,
+      attackSpeed: 1200, speed: 60, count: 2, radius: 12, spread: 20,
+      color: '#00695c', icon: '🦅', target: 'ground', sight: 150,
+      canTargetAir: true
+    },
+
+    // ---------- Carta escondida (invocada, não aparece na loja/draft) ----------
+    goblin_brawler: {
+      name: 'Goblin Brutamontes', hidden: true, cost: 0,
+      hp: 700, damage: 130, range: 25, attackSpeed: 1300, speed: 65,
+      count: 1, radius: 17, color: '#558b2f', icon: '👹', target: 'ground', sight: 110
     }
   };
 });

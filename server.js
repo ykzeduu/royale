@@ -8,7 +8,8 @@ const C = require('./public/constants.js');
 
 const MELEE_RANGE = 40; // acima disso, o ataque gera um projétil visual
 const ALL_CARD_KEYS = Object.keys(CARDS);
-const DRAFT_ROUNDS = 8;
+const SELECTABLE_KEYS = ALL_CARD_KEYS.filter(k => !CARDS[k].hidden);
+const DRAFT_ROUNDS = SELECTABLE_KEYS.length / 2;
 
 const app = express();
 const server = http.createServer(app);
@@ -48,11 +49,11 @@ function isValidDeck(deck) {
   if (!Array.isArray(deck) || deck.length !== 8) return false;
   const set = new Set(deck);
   if (set.size !== 8) return false;
-  return deck.every(k => ALL_CARD_KEYS.includes(k));
+  return deck.every(k => SELECTABLE_KEYS.includes(k));
 }
 
 function randomDeck() {
-  return shuffle(ALL_CARD_KEYS).slice(0, 8);
+  return shuffle(SELECTABLE_KEYS).slice(0, 8);
 }
 
 function newPlayerState(deck) {
@@ -126,7 +127,7 @@ function totalTowerHp(p) {
 // ---------- Modo Escolha Rápida (draft) ----------
 
 function startDraft(room) {
-  const pool = shuffle(ALL_CARD_KEYS); // 16 cartas
+  const pool = shuffle(SELECTABLE_KEYS); // cartas jogáveis
   const pairs = [];
   for (let i = 0; i < pool.length; i += 2) pairs.push([pool[i], pool[i + 1]]);
 
@@ -283,7 +284,9 @@ function makeTroop(card, cardKey, owner, x, y, lane, bridgeX) {
     slowDurationOnHit: card.slowDuration || 0,
     spawnOnDeath: card.spawnOnDeath || null,
     spawnEvery: card.spawnEvery || 0,
+    spawnCount: card.spawnCount || 1,
     spawnCooldown: card.spawnEvery || 0,
+    breathFx: !!card.breathFx,
     lane, bridgeX
   };
 }
@@ -381,11 +384,15 @@ function updateTroop(t, state, dt, newTroops) {
     if (t.spawnCooldown <= 0) {
       t.spawnCooldown = t.spawnEvery;
       const skelCard = CARDS.skeletons;
-      newTroops.push(makeTroop(
-        { ...skelCard, count: 1 }, 'skeletons', t.owner,
-        t.x + (Math.random() - 0.5) * 20, t.y + (Math.random() - 0.5) * 10,
-        t.lane, t.bridgeX
-      ));
+      const n = t.spawnCount || 1;
+      for (let i = 0; i < n; i++) {
+        const off = (i - (n - 1) / 2) * 18;
+        newTroops.push(makeTroop(
+          { ...skelCard, count: 1 }, 'skeletons', t.owner,
+          t.x + off, t.y + (Math.random() - 0.5) * 10,
+          t.lane, t.bridgeX
+        ));
+      }
     }
   }
 
@@ -449,7 +456,9 @@ function updateTroop(t, state, dt, newTroops) {
           });
         }
         t.cooldown = t.attackSpeed;
-        if (t.range > MELEE_RANGE) {
+        if (t.breathFx) {
+          state.events.push({ type: 'dragonbreath', x1: t.x, y1: t.y, x2: target.x, y2: target.y, owner: t.owner, radius: t.splash || 40 });
+        } else if (t.range > MELEE_RANGE) {
           state.events.push({ type: 'shot', x1: t.x, y1: t.y, x2: target.x, y2: target.y, owner: t.owner, fromId: t.id });
         } else {
           state.events.push({ type: 'melee', x: t.x, y: t.y, owner: t.owner, fromId: t.id });
@@ -467,6 +476,10 @@ function updateTroop(t, state, dt, newTroops) {
   const dd = Math.hypot(dx, dy) || 1;
   let spd = t.speed;
   if (t.slowUntil && Date.now() < t.slowUntil) spd *= t.slowFactor;
+  // quem pula o rio (ignora a ponte) fica mais lento enquanto está sobre a água
+  if (t.ignoreRiver && t.y >= C.RIVER_Y - C.RIVER_HALF && t.y <= C.RIVER_Y + C.RIVER_HALF) {
+    spd *= 0.5;
+  }
   const step = spd * dt * C.TROOP_SPEED_MULTIPLIER;
   const m = Math.min(step, dd);
   t.x += (dx / dd) * m;
@@ -481,7 +494,8 @@ function applyDamage(target, dmg, state) {
     const tower = p.towers[target.which];
     tower.hp -= dmg;
     if (tower.hp < 0) tower.hp = 0;
-    if (target.which === 'king') tower.activated = true;
+    // qualquer torre do lado que toma dano "acorda" a torre do rei
+    p.towers.king.activated = true;
   }
 }
 
@@ -532,7 +546,7 @@ function handleDeploy(room, idx, cardKey, x, y) {
         if (dist({ x, y }, pos) <= card.radius) {
           p.towers[k].hp -= card.damage;
           if (p.towers[k].hp < 0) p.towers[k].hp = 0;
-          if (k === 'king') p.towers[k].activated = true;
+          p.towers.king.activated = true;
         }
       });
     });

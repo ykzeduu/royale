@@ -96,7 +96,7 @@ function openDeckBuilder() {
 function buildDeckGrid() {
   const grid = document.getElementById('deck-grid');
   grid.innerHTML = '';
-  Object.keys(CARDS).forEach(key => {
+  Object.keys(CARDS).filter(key => !CARDS[key].hidden).forEach(key => {
     const card = CARDS[key];
     const el = document.createElement('div');
     el.className = 'deck-card';
@@ -125,7 +125,8 @@ function updateDeckCounter() {
 }
 
 document.getElementById('btn-random-deck').addEventListener('click', () => {
-  myDeckSelection = shuffleClient(Object.keys(CARDS)).slice(0, 8);
+  const selectable = Object.keys(CARDS).filter(key => !CARDS[key].hidden);
+  myDeckSelection = shuffleClient(selectable).slice(0, 8);
   document.querySelectorAll('#deck-grid .deck-card').forEach(el => {
     el.classList.toggle('picked', myDeckSelection.includes(el.dataset.key));
   });
@@ -410,6 +411,8 @@ function spawnEffect(ev) {
   if (ev.type === 'shot') {
     effects.push({ type: 'shot', x1: ev.x1, y1: ev.y1, x2: ev.x2, y2: ev.y2, owner: ev.owner, start: performance.now(), duration: 180 });
     if (ev.fromId) attackFlash[ev.fromId] = performance.now();
+  } else if (ev.type === 'dragonbreath') {
+    effects.push({ type: 'dragonbreath', x1: ev.x1, y1: ev.y1, x2: ev.x2, y2: ev.y2, owner: ev.owner, radius: ev.radius || 40, start: performance.now(), duration: 420 });
   } else if (ev.type === 'melee') {
     if (ev.fromId) attackFlash[ev.fromId] = performance.now();
   } else if (ev.type === 'spell') {
@@ -526,6 +529,16 @@ function drawTroop(t) {
   const phase = hashInt(t.id) % 1000;
   const bob = Math.sin(now / 220 + phase) * 1.6;
 
+  // tropas que "pulam" o rio (ignoram a ponte) sobem no ar enquanto atravessam
+  let jumpLift = 0;
+  if (card.ignoreRiver) {
+    const distFromRiverCenter = Math.abs(t.y - C.RIVER_Y);
+    if (distFromRiverCenter <= C.RIVER_HALF + 10) {
+      const fraction = 1 - Math.min(1, distFromRiverCenter / (C.RIVER_HALF + 10));
+      jumpLift = Math.sin(fraction * Math.PI * 0.5) * 16;
+    }
+  }
+
   let scale = 1;
   const flashAt = attackFlash[t.id];
   if (flashAt) {
@@ -535,12 +548,12 @@ function drawTroop(t) {
   }
 
   ctx.save();
-  ctx.translate(p.x, p.y + bob + (t.flying ? -14 : 0));
+  ctx.translate(p.x, p.y + bob + (t.flying ? -14 : 0) - jumpLift);
 
-  if (t.flying) {
+  if (t.flying || jumpLift > 1) {
     // sombra projetada no chão para dar noção de altura
     ctx.beginPath();
-    ctx.ellipse(0, t.radius + 14, t.radius * 0.7, t.radius * 0.25, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, t.radius + (t.flying ? 14 : jumpLift + 6), t.radius * 0.7, t.radius * 0.25, 0, 0, Math.PI * 2);
     ctx.fillStyle = 'rgba(0,0,0,0.3)';
     ctx.fill();
   } else {
@@ -570,7 +583,7 @@ function drawTroop(t) {
 
   const pct = Math.max(0, t.hp / t.maxHp);
   const barW = t.radius * 2;
-  const barY = p.y + bob + (t.flying ? -14 : 0) - t.radius - 8;
+  const barY = p.y + bob + (t.flying ? -14 : 0) - jumpLift - t.radius - 8;
   ctx.fillStyle = '#000';
   ctx.fillRect(p.x - barW / 2, barY, barW, 4);
   ctx.fillStyle = pct > 0.4 ? '#4caf50' : '#f44336';
@@ -620,6 +633,32 @@ function drawSpellEffect(e, p) {
   }
 }
 
+function drawDragonBreath(e, p) {
+  const a = toDisplay(e.x1, e.y1), b = toDisplay(e.x2, e.y2);
+  if (p < 0.55) {
+    const fp = p / 0.55;
+    const x = a.x + (b.x - a.x) * fp;
+    const y = a.y + (b.y - a.y) * fp;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(fp * 4);
+    ctx.font = (20 - fp * 4) + 'px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('🔥', 0, 0);
+    ctx.restore();
+  } else {
+    const ep = (p - 0.55) / 0.45;
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, 1 - ep);
+    ctx.fillStyle = '#ff5722';
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, e.radius * 0.6 * (0.3 + ep * 1.1), 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
 function drawEffects() {
   const now = performance.now();
   effects = effects.filter(e => now - e.start < e.duration);
@@ -627,6 +666,7 @@ function drawEffects() {
     const p = Math.min(1, (now - e.start) / e.duration);
     if (e.type === 'shot') drawShotEffect(e, p);
     else if (e.type === 'spell') drawSpellEffect(e, p);
+    else if (e.type === 'dragonbreath') drawDragonBreath(e, p);
   });
 }
 

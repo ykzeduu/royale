@@ -74,24 +74,33 @@ git push -u origin main
 
 | Carta | Custo | Estilo |
 |---|---|---|
-| Espírito de Gelo ❄️ | 1 | Explode uma vez, dano em área + desacelera quem for atingido |
 | Esqueletos 💀 | 1 | 3 unidades fracas e baratas |
-| Goblins 👺 | 2 | 4 unidades rápidas e frágeis |
+| Goblins 👺 | 2 | 4 unidades rápidas (aguentam 2 hits de torre) |
 | Cavaleiro ⚔️ | 3 | Tanque corpo a corpo |
 | Arqueiras 🏹 | 3 | 2 unidades de longo alcance |
 | Guardas Reais 🛡️ | 3 | 3 unidades resistentes |
+| Servos Voadores 🧚 | 3 | 3 unidades voadoras |
 | Flechas 🎯 | 3 | Feitiço de área grande, dano menor (bom contra enxames) |
 | Mosqueteira 🔫 | 4 | Longo alcance, dano alto |
 | Mini P.E.K.K.A 🗡️ | 4 | Dano corpo a corpo altíssimo |
 | Bola de Fogo 🔥 | 4 | Feitiço de área, dano alto |
-| Jaula de Goblin 🔒 | 4 | Construção-isca: quando destruída, solta um Goblin |
-| Dragão 🐉 | 4 | Voador, dano em área, só pode ser atingido por unidades com alcance à distância ou torres |
-| Hogrider 🐗 | 4 | Pula o rio direto (ignora a ponte), só ataca construções |
-| Gigante 👊 | 5 | Tanque que só ataca torres |
+| Jaula de Goblin 🔒 | 4 | Isca: quando destruída, solta um Goblin Brutamontes |
+| Dragão 🐉 | 4 | Voador, bafo de fogo em área |
+| Corredor 🐗 | 4 | Pula o rio direto (mais devagar que correndo em campo), só ataca construções |
+| Caçadores de Dragão 🦅 | 4 | 2 unidades anti-aéreas |
 | Bárbaros 🪓 | 5 | 4 unidades médias |
-| Bruxa 🧙 | 5 | Longo alcance + invoca esqueletos periodicamente |
+| Bruxa 🧙 | 5 | Longo alcance + invoca 3 esqueletos periodicamente |
 
 ## Novidades desta versão
+
+- **Torre do rei corrigida**: agora ela "acorda" assim que qualquer torre do seu lado toma dano (antes só acordava se ela mesma fosse atingida, o que a deixava passiva demais).
+- **Jaula de Goblin** agora solta um Goblin Brutamontes (tropa única e resistente) em vez de 4 goblins pequenos.
+- **Bruxa** agora invoca 3 esqueletos por vez.
+- **Servos Voadores** substituem o Espírito de Gelo como nova carta voadora.
+- **Caçadores de Dragão** substituem o Gigante — dupla anti-aérea.
+- **Goblins** com mais vida (aguentam 2 hits de torre antes de morrer).
+- **Dragão**: o ataque à distância agora usa uma animação própria de bafo de fogo (uma versão menor da Bola de Fogo saindo da boca dele).
+- **Corredor** (antes "Hogrider"): ganhou uma animação de pulo ao atravessar o rio, e fica mais lento nesse trecho do que correndo em campo aberto.
 
 - **Lobby de baralho**: agora dá pra escolher entre 16 cartas e montar seu baralho de 8 antes de jogar (modo Normal), ou fazer um draft ao vivo com seu amigo (modo Escolha Rápida).
 - **8 cartas novas**: Espírito de Gelo, Goblins, Guardas Reais, Flechas, Jaula de Goblin, Dragão (voador), Hogrider (ignora a ponte) e Bruxa (invoca esqueletos).
